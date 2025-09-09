@@ -23,44 +23,60 @@
 // * acceptance of all terms of the Geant4 Software license.          *
 // ********************************************************************
 //
-/// \file exoticphysics/ucn/src/ExUCNRunAction.cc
-/// \brief Implementation of the ExUCNRunAction class
-//
-//
-//
-//
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+// Please cite the following paper if you use this software
+// Nucl.Instrum.Meth.B260:20-27, 2007
 
-#include "ExUCNRunAction.hh"
+#ifndef PrimaryGeneratorMessenger_h
+#define PrimaryGeneratorMessenger_h 1
 
-#include "G4ProcessTable.hh"
-#include "G4Run.hh"
-#include "G4UCNBoundaryProcess.hh"
+#include "G4UImessenger.hh"
+#include "G4UIcmdWithAnInteger.hh"
+#include "G4UImessenger.hh"
+#include "ExUCNPrimaryGeneratorAction.hh"
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+class PrimaryGeneratorAction;
 
-ExUCNRunAction::ExUCNRunAction() : G4UserRunAction() {}
+///////
+class G4UIdirectory;
+class G4UIcmdWithAString;
+class G4UIcmdWithADouble;
+class G4UIcmdWithADoubleAndUnit;
+class G4UIcmdWith3Vector;
+class G4UIcmdWith3VectorAndUnit;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-ExUCNRunAction::~ExUCNRunAction() {}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void ExUCNRunAction::BeginOfRunAction(const G4Run*) {}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void ExUCNRunAction::EndOfRunAction(const G4Run*)
+class PrimaryGeneratorMessenger: public G4UImessenger
 {
-/*  G4ProcessTable* processTable = G4ProcessTable::GetProcessTable();
+  public:
+    
+   PrimaryGeneratorMessenger(ExUCNPrimaryGeneratorAction*);
+//     PrimaryGeneratorMessenger();
+   ~PrimaryGeneratorMessenger();
+    
+    void SetNewValue(G4UIcommand*, G4String);
+    
+  private:
+    
+    ExUCNPrimaryGeneratorAction* fAction;
 
-  G4UCNBoundaryProcess* ucnBoundaryProcess = (G4UCNBoundaryProcess*)processTable->FindProcess(
-    "UCNBoundaryProcess", G4Neutron::NeutronDefinition());
+   //G4string especfile;
+    G4UIcmdWith3VectorAndUnit* setGunPositionCmd;
+    G4UIcmdWithADouble* setxGunDirectionCmd;
+    G4UIcmdWithADouble* setyGunDirectionCmd;
+    G4UIcmdWithADouble* setzGunDirectionCmd;
+    G4UIcmdWithADouble* setGunEnergy_neVCmd;
+    G4UIcmdWithADouble* setGunDirectionRangeCmd;
+    G4UIcmdWithADoubleAndUnit* setGunMaxRadCmd;
+    G4UIdirectory*     gunDirectory;
+    G4UIcmdWithAString* setEspecCmd;
+    G4UIcmdWithAString* setAngspecCmd;
+    G4UIcmdWithAString* setAngspeclogCmd;
 
-  ucnBoundaryProcess->BoundaryProcessSummary();
-*/
-  }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+};
+
+#endif
+

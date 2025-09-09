@@ -43,9 +43,12 @@
 #include "G4SystemOfUnits.hh"
 #include "Randomize.hh"
 
+#include "PrimaryGeneratorMessenger.hh"
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 ExUCNPrimaryGeneratorAction::ExUCNPrimaryGeneratorAction(void)
+//ExUCNPrimaryGeneratorAction::ExUCNPrimaryGeneratorAction(ExUCNDetectorConstruction* DC):fDetector(DC)
 {
   G4int n_particle = 1;
   fParticleGun = new G4ParticleGun(n_particle);
@@ -54,6 +57,9 @@ ExUCNPrimaryGeneratorAction::ExUCNPrimaryGeneratorAction(void)
 
   G4ParticleDefinition* particle = particleTable->FindParticle("neutron");
   fParticleGun->SetParticleDefinition(particle);
+
+  // create a messenger for this class
+  fGunMessenger = new PrimaryGeneratorMessenger(this);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -61,6 +67,7 @@ ExUCNPrimaryGeneratorAction::ExUCNPrimaryGeneratorAction(void)
 ExUCNPrimaryGeneratorAction::~ExUCNPrimaryGeneratorAction()
 {
   delete fParticleGun;
+  delete fGunMessenger;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -68,24 +75,191 @@ ExUCNPrimaryGeneratorAction::~ExUCNPrimaryGeneratorAction()
 void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
   // This function is called at the begining of event
-
+/*
   fParticleGun->SetParticlePosition(G4ThreeVector(0.0, 0.0, 0.0));
   fParticleGun->SetParticlePolarization(G4ThreeVector(0, 1, 0));
 
-  G4double particleEnergy = 1e-9 * eV + G4UniformRand() * (1e-7 * eV - 1e-9 * eV);
+  G4double particleEnergy = 60*1e-9 * eV;// + G4UniformRand() * (1e-7 * eV - 1e-9 * eV);
   fParticleGun->SetParticleEnergy(particleEnergy);
 
-  G4double theta = 2 * pi * G4UniformRand();
-  G4double phi = std::acos(1 - 2 * G4UniformRand());
+  G4double theta = pi/2;//0;//2 * pi * G4UniformRand();
+  G4double phi = 0;// std::acos(1 - 2 * G4UniformRand());
   if (phi > pi / 2 && phi < pi) phi = pi - phi;
 
-  G4double z = std::sin(phi) * std::cos(theta);
-  G4double x = std::sin(phi) * std::sin(theta);
-  G4double y = std::cos(phi);
+  G4double z = 1;//std::sin(phi) * std::cos(theta);
+  G4double x = 1;//std::sin(phi) * std::sin(theta);
+  G4double y = 1;//std::cos(phi);
 
   fParticleGun->SetParticleMomentumDirection(G4ThreeVector(x, y, z));
 
   fParticleGun->GeneratePrimaryVertex(anEvent);
+*/
+
+
+
+   G4double px=100.0,py=0.0,pz=0.0 ;
+   G4ThreeVector spin(1,1,0);
+   G4ThreeVector xaxis(1,0,0);
+   G4ThreeVector yaxis(0,1,0);
+
+   G4double x1 = G4UniformRand()*72.-36.;
+   G4double z1  = G4UniformRand()*72.-36.;
+   G4double radius1 = sqrt(x1*x1+z1*z1);
+   while (radius1 > 36.)
+   {
+    x1 = G4UniformRand()*72.-36.;
+    z1  = G4UniformRand()*72.-36.;
+   radius1 = sqrt(x1*x1+z1*z1);
+   }
+
+   G4double longi = G4UniformRand()*2990;
+   G4ThreeVector gunPositionShift(x1 - 270 - 80 , z1- 286., -3000 + longi);
+   G4double offset = 0;
+   G4double particleEnergy = (Espec(Especfile)+offset) * 1e-9*eV;
+
+   //particleEnergy = gunEnergy_neV * 1e-15;
+   //gunPositionShift.setY(-286.);
+  // monoenergetic spectrum
+//particleEnergy = 60*1e-15;
+
+
+   fParticleGun->SetParticlePosition(gunPositionShift);
+   fParticleGun->SetParticleEnergy(particleEnergy);
+   G4cout << "E = " << particleEnergy << G4endl;
+   //G4cout << " energy " << gunEnergy_neV << G4endl;
+
+std::ofstream myfile("start.txt", std::ofstream::app);
+//std::ofstream myfile("start.txt");
+   myfile << particleEnergy*1e15 <<  " "  << gunPositionShift.getX() << " " << gunPositionShift.getY()  << " " << gunPositionShift.getZ() <<  std::endl;
+
+
+  //G4cout << "Distribution of angular distribution following: " << Angspecfile << G4endl;
+  /*
+   G4ThreeVector startmom(0.,1.,0.);
+   // the main UCN beam direction
+    G4double theta = CLHEP::pi*(G4UniformRand());//Espec(Angspecfile)/90.*pi/2; // 0 degrees is forward, 90 degrees in transverse
+    G4double phi = 2*CLHEP::pi*(G4UniformRand()); // rotationsymmetric distribution
+    startmom.rotateX(theta);
+    startmom.rotateY(phi);
+*/
+    G4double mx = 1;
+    G4double my = 1;
+    G4double mz = 1;
+
+    G4double mradius = sqrt(mx*mx +my*my+mz*mz);
+    while (mradius > 1){
+      mx = 2 * G4UniformRand()-1;
+      my = 2 * G4UniformRand()-1;
+      mz = 2 * G4UniformRand()-1;
+      mradius = sqrt(mx*mx +my*my+mz*mz);
+    } 
+    G4ThreeVector startmom(mx,my,mz);
+	    
+    
+    
+    G4cout << "startmomem " << startmom.getX() << ";" << startmom.getY() << ";" << startmom.getZ() << G4endl;
+
+    fParticleGun->SetParticleMomentumDirection(startmom.unit());
+/*
+  if (Angspeclogfile.length() > 0){
+         char stri[1000]; sprintf(stri, "%f %f %f %f %f %f %f", particleEnergy*1e9*1e6 ,
+         startmom.getX(), startmom.getY(),
+         startmom.getZ(),gunPositionShift.getX(),gunPositionShift.getY(), gunPositionShift.getZ());
+         std::ofstream examplefile (Angspeclogfile, std::ofstream::app);
+         if (examplefile.is_open()){ examplefile << stri << " " ; examplefile.close();}
+  }
+*/
+
+
+
+    fParticleGun->GeneratePrimaryVertex(anEvent);
+
+
+
+  }
+
+G4double ExUCNPrimaryGeneratorAction::Espec(G4String fnam){
+
+G4double e = G4UniformRand();
+double energy = 0;
+   float prob, txt;
+   double sum = 0;
+   double ref = 0;
+   double refold = 0;
+   int i = 0;
+   int k = 0;
+   double entries[1000];
+   double velo[1000];
+
+    int n = read_two_column_file(fnam, velo, entries, 1000);
+
+     ref = 0;
+     sum = 0;
+       for (int a = 0; a <n;a++){
+       entries[a] = prob;
+       sum = sum + prob; }
+
+     for (k =0;k<n; k++){
+        refold = ref;
+        ref = ref + entries[k] / sum;
+
+        if (e < ref){
+         energy = (velo[k]-velo[k-1])/(ref-refold) * (e-refold) + velo[k-1];
+
+        return energy;
+        }
+     }
+     //}
+
+   //}
+   return e;
 }
+
+int ExUCNPrimaryGeneratorAction::read_two_column_file(const char *filename, double x[], double y[], size_t maxSize) {
+        FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        perror("Spectrum file issue");
+        return -1;
+    }
+
+    size_t count = 0;
+    char line[256];
+
+    while (fgets(line, sizeof(line), fp)) {
+        // Kommentarzeilen überspringen
+        if (line[0] == '#') {
+            continue;
+        }
+        double val1, val2;
+        if (sscanf(line, "%lf %lf", &val1, &val2) == 2) {
+            if (count < maxSize) {
+                x[count] = val1;
+                y[count] = val2;
+                count++;
+            //G4cout << " v 1 " << val1 << ", v2 " << val2 << G4endl;
+            } else {
+                fprintf(stderr, "Maximale Grö?~_e erreicht (%zu Werte)\n", maxSize);
+                break;
+            }
+        }
+    }
+    fclose(fp);
+    return (int)count;
+}
+
+
+void ExUCNPrimaryGeneratorAction::SetGunEnergy_neV(G4double e)
+{
+  gunEnergy_neV = e ;
+  G4cout << " Energy the gun = " << gunEnergy_neV << " neV" << G4endl;
+}
+
+void ExUCNPrimaryGeneratorAction::SetEspec(G4String fil){
+Especfile = fil;
+
+//G4cout << " set energy spec " << fil << G4endl;
+}
+
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

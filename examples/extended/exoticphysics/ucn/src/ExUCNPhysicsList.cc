@@ -39,7 +39,7 @@
 
 ExUCNPhysicsList::ExUCNPhysicsList() : G4VModularPhysicsList()
 {
-  RegisterPhysics(new G4DecayPhysics());
+//  RegisterPhysics(new G4DecayPhysics());
   RegisterPhysics(new ExUCNExtraPhysics());
 }
 
@@ -55,13 +55,13 @@ ExUCNPhysicsList::~ExUCNPhysicsList()
 void ExUCNPhysicsList::ConstructParticle()
 {
   G4Neutron::NeutronDefinition();
-  G4Proton::ProtonDefinition();
-  G4Electron::ElectronDefinition();
-  G4AntiNeutrinoE::AntiNeutrinoEDefinition();
-  G4MuonPlus::MuonPlusDefinition();
-  G4MuonMinus::MuonMinusDefinition();
+ // G4Proton::ProtonDefinition();
+ // G4Electron::ElectronDefinition();
+ // G4AntiNeutrinoE::AntiNeutrinoEDefinition();
+ // G4MuonPlus::MuonPlusDefinition();
+ //  G4MuonMinus::MuonMinusDefinition();
 
-  G4GenericIon::GenericIonDefinition();
+ // G4GenericIon::GenericIonDefinition();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -75,5 +75,5 @@ void ExUCNPhysicsList::ConstructProcess()
 
 void ExUCNPhysicsList::SetCuts()
 {
-  SetCutsWithDefault();
+ // SetCutsWithDefault();
 }

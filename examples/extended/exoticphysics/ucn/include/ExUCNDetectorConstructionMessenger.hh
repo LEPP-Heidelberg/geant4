@@ -23,44 +23,64 @@
 // * acceptance of all terms of the Geant4 Software license.          *
 // ********************************************************************
 //
-/// \file exoticphysics/ucn/src/ExUCNRunAction.cc
-/// \brief Implementation of the ExUCNRunAction class
-//
-//
-//
-//
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+// Please cite the following paper if you use this software
+// Nucl.Instrum.Meth.B260:20-27, 2007
 
-#include "ExUCNRunAction.hh"
+#ifndef ExUCNDetectorConstructionMessenger_h
+#define ExUCNDetectorConstructionMessenger_h 1
 
-#include "G4ProcessTable.hh"
-#include "G4Run.hh"
-#include "G4UCNBoundaryProcess.hh"
+#include "G4UImessenger.hh"
+#include "G4UIcmdWithAnInteger.hh"
+#include "G4UImessenger.hh"
+#include "ExUCNDetectorConstruction.hh"
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+class ExUCNDetectorConstruction;
 
-ExUCNRunAction::ExUCNRunAction() : G4UserRunAction() {}
+//////
+class G4UIdirectory;
+class G4UIcmdWithAString;
+class G4UIcmdWithADouble;
+class G4UIcmdWithADoubleAndUnit;
+class G4UIcmdWith3Vector;
+class G4UIcmdWith3VectorAndUnit;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-ExUCNRunAction::~ExUCNRunAction() {}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void ExUCNRunAction::BeginOfRunAction(const G4Run*) {}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void ExUCNRunAction::EndOfRunAction(const G4Run*)
+class ExUCNDetectorConstructionMessenger: public G4UImessenger
 {
-/*  G4ProcessTable* processTable = G4ProcessTable::GetProcessTable();
+  public:
 
-  G4UCNBoundaryProcess* ucnBoundaryProcess = (G4UCNBoundaryProcess*)processTable->FindProcess(
-    "UCNBoundaryProcess", G4Neutron::NeutronDefinition());
+   ExUCNDetectorConstructionMessenger(ExUCNDetectorConstruction*);
+   ~ExUCNDetectorConstructionMessenger();
 
-  ucnBoundaryProcess->BoundaryProcessSummary();
-*/
-  }
+    void SetNewValue(G4UIcommand*, G4String);
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+  private:
+
+    ExUCNDetectorConstruction* fAction;
+
+   //G4string especfile;
+    G4UIcmdWithADouble* setxGunDirectionCmd1;
+    G4UIcmdWithADouble* setxGunDirectionCmd2;
+    G4UIcmdWithADouble* setxGunDirectionCmd3;
+    G4UIcmdWithADouble* setxGunDirectionCmd4;
+    G4UIcmdWithADouble* setxGunDirectionCmd5;
+    G4UIcmdWithADouble* setxGunDirectionCmd6;
+    G4UIcmdWithADouble* setxGunDirectionCmd7;
+    G4UIcmdWithADouble* setxGunDirectionCmd8;
+    G4UIcmdWithADouble* setxGunDirectionCmd9;
+    G4UIcmdWithADouble* setxGunDirectionCmd10;
+    G4UIcmdWithADouble* setxGunDirectionCmd11;
+    G4UIcmdWithADouble* setxGunDirectionCmd12;
+    G4UIcmdWithADouble* setxGunDirectionCmd13;
+  G4UIcmdWithADouble* setxGunDirectionCmd14;
+ 
+    G4UIdirectory*     gunDirectory;
+
+
+};
+
+#endif
+
+

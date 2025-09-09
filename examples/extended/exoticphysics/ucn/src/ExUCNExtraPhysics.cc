@@ -44,6 +44,8 @@
 #include "G4UCNMultiScattering.hh"
 #include "G4UserSpecialCuts.hh"
 
+#include "UCNMaterialBoundary2.hh"
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 ExUCNExtraPhysics::ExUCNExtraPhysics() : G4VPhysicsConstructor("Extra")
@@ -84,7 +86,7 @@ void ExUCNExtraPhysics::ConstructProcess()
     }
 
     pmanager->AddDiscreteProcess(new G4StepLimiter());
-    pmanager->AddDiscreteProcess(new G4UserSpecialCuts());
+//    pmanager->AddDiscreteProcess(new G4UserSpecialCuts());
   }
 
   ConstructUCN();
@@ -100,6 +102,7 @@ void ExUCNExtraPhysics::ConstructUCN()
   auto particleIterator = GetParticleIterator();
   particleIterator->reset();
   G4ProcessManager* pmanager = NULL;
+  UCNMaterialBoundary2* theMaterialBoundary = new UCNMaterialBoundary2();
 
   while ((*particleIterator)()) {
     G4ParticleDefinition* particle = particleIterator->value();
@@ -113,16 +116,19 @@ void ExUCNExtraPhysics::ConstructUCN()
     }
 
     if (particleName == "neutron") {
-      pmanager->AddDiscreteProcess(new G4UCNLoss());
-      pmanager->AddDiscreteProcess(new G4UCNAbsorption());
-      pmanager->AddDiscreteProcess(new G4UCNMultiScattering());
+      pmanager->AddDiscreteProcess(theMaterialBoundary);
+      pmanager->SetProcessOrdering(theMaterialBoundary, idxPostStep);
+	    
+//	          pmanager->AddDiscreteProcess(new G4UCNLoss());
+      //pmanager->AddDiscreteProcess(new G4UCNAbsorption());
+      //pmanager->AddDiscreteProcess(new G4UCNMultiScattering());
 
-      G4UCNBoundaryProcess* ucnBoundaryProcess = new G4UCNBoundaryProcess();
-      ucnBoundaryProcess->SetMicroRoughness(true);
-      ucnBoundaryProcess->SetVerboseLevel(0);
+  //    G4UCNBoundaryProcess* ucnBoundaryProcess = new G4UCNBoundaryProcess();
+  //    ucnBoundaryProcess->SetMicroRoughness(true);
+  //    ucnBoundaryProcess->SetVerboseLevel(0);
 
-      pmanager->AddDiscreteProcess(ucnBoundaryProcess);
-    }
+  //    pmanager->AddDiscreteProcess(ucnBoundaryProcess);
+      }
   }
 }
 

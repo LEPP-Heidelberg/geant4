@@ -36,9 +36,10 @@
 
 #include "G4VUserDetectorConstruction.hh"
 #include "globals.hh"
+//#include "ExUCNDetectorConstructionMessenger.hh"
 
 class G4Material;
-
+class ExUCNDetectorConstructionMessenger;
 class G4UniformGravityField;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -48,14 +49,40 @@ class ExUCNDetectorConstruction : public G4VUserDetectorConstruction
   public:
     ExUCNDetectorConstruction();
     virtual ~ExUCNDetectorConstruction();
+    virtual void SetProperty1(G4double e);
+    virtual void SetProperty2(G4double e);
+    virtual void SetProperty3(G4double e);
+    virtual void SetProperty4(G4double e);
+    virtual void SetProperty5(G4double e);
+    virtual void SetProperty6(G4double e);
+    virtual void SetProperty7(G4double e);
+    virtual void SetProperty8(G4double e);
+    virtual void SetProperty9(G4double e);
+    virtual void SetProperty10(G4double e);
+    virtual void SetProperty11(G4double e);
+    virtual void SetProperty12(G4double e);
+   virtual void SetProperty13(G4double e);
+ virtual void SetProperty14(G4double e);
 
   public:
     virtual G4VPhysicalVolume* Construct();
     virtual void ConstructSDandField();
 
+//       ExUCNDetectorConstructionMessenger* fMessenger;
+
   private:
     G4Material* fVacuum;
     G4Material* fGuideMaterial;
+    G4Material* DetMat;
+    G4Material* WorldMaterial;
+    G4Material* GuideMaterial1;
+    G4Material* GuideMaterial2;
+    G4Material* GuideMaterial3;
+    G4Material* GuideMaterial4;
+    G4Material* GuideMaterial5;
+
+
+    ExUCNDetectorConstructionMessenger* fMessenger;
 
     static G4ThreadLocal G4UniformGravityField* fField;
 

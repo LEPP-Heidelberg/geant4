@@ -31,7 +31,7 @@
 
 #include "ExUCNPrimaryGeneratorAction.hh"
 #include "ExUCNRunAction.hh"
-
+#include "ExUCNDetectorConstruction.hh"
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 ExUCNActionInitialization::ExUCNActionInitialization() : G4VUserActionInitialization() {}
@@ -51,7 +51,7 @@ void ExUCNActionInitialization::BuildForMaster() const
 
 void ExUCNActionInitialization::Build() const
 {
-  SetUserAction(new ExUCNPrimaryGeneratorAction);
+  SetUserAction(new ExUCNPrimaryGeneratorAction());
 
   SetUserAction(new ExUCNRunAction());
 }
