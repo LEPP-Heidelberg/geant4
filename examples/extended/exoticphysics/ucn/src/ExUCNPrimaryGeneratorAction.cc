@@ -181,8 +181,7 @@ std::ofstream myfile("start.txt", std::ofstream::app);
 G4double ExUCNPrimaryGeneratorAction::Espec(G4String fnam){
 
 G4double e = G4UniformRand();
-double energy = 0;
-   float prob, txt;
+   double energy = 0;
    double sum = 0;
    double ref = 0;
    double refold = 0;
@@ -196,8 +195,8 @@ double energy = 0;
      ref = 0;
      sum = 0;
        for (int a = 0; a <n;a++){
-       entries[a] = prob;
-       sum = sum + prob; }
+       sum += entries[a];
+       		}
 
      for (k =0;k<n; k++){
         refold = ref;
