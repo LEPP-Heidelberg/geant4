@@ -142,13 +142,14 @@ int main(int argc, char** argv)
   //
 
   G4UImanager* UImanager = G4UImanager::GetUIpointer();
-
+ std::ofstream myfile("start.txt", std::ofstream::app);                                                                                   
+ myfile << "# Energy[neV] x[mm] y[mm] z[mm]" << std::endl;
 
  if (macro.size()) {
     // batch mode
     G4String command = "/control/execute ";
  //UImanager->ApplyCommand("/control/execute vis.mac");
- UImanager->ApplyCommand(command + macro);
+																	   UImanager->ApplyCommand(command + macro);
   }
   else {  // interactive mode : define UI session
     UImanager->ApplyCommand("/control/execute vis.mac");
@@ -157,20 +158,14 @@ int main(int argc, char** argv)
     delete ui;
 }
 
-  G4cout << "made it through here " << G4endl;
-  // Job termination
-  // Free the store: user actions, physics_list and detector_description are
-  //                 owned and deleted by the run manager, so they should not
-  //                 be deleted in the main() program !
 
-  G4cout << "here1" << G4endl;
+  G4cout << "End of ExUCN.cc" << G4endl;
   delete visManager;
-  G4cout << "here2 " << G4endl;
+  G4cout << "Deleted visManager" << G4endl;
   delete UImanager;
-  G4cout << "here3" << G4endl;
+  G4cout << "Deleted UImanager" << G4endl;
   //delete runManager;
-
-  G4cout << "here4" << G4endl;
+  //G4cout << "Deleted runManager" << G4endl;
   return 0;
 }
 

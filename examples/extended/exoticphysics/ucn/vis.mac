@@ -18,25 +18,37 @@
 #/vis/scene/add/trajectories smooth
 #/vis/scene/add/scale   # Simple scale line
 #/vis/scene/add/axes    # Simple axes: x=red, y=green, z=blue.
+
 # guide away from source, 90 deg bend, tube below chopper blades
 # set the file of the starting spectrum
-/gun/spectrumfile spec1.dat
+/gun/spectrumfile spec.dat
 # tube above chopper blades, tube to detector
-#/det/optpot1 220
-#/det/eta1 0.0001
-#/det/diff1 0.0
+/mat/optpot1 183
+/mat/eta1 0.0001
+/mat/diff1 0.04
 # converter volume (INSIDE LIQUID HELIUM, therfore 18.5 neV reduced potential
-#/det/optpot2 100
-#/det/eta2 0.0001
-#/det/diff2 0.0
+/mat/optpot2 96.5
+/mat/eta2 0.00005
+/mat/diff2 0.02
 # cube inside the converter. reduce by 18.5 because submerged in lHe
-#/det/optpot3 230
-#/det/eta3 0.0001
-#/det/diff3 0.0
+/mat/optpot3 233.5
+/mat/eta3 0.00005
+/mat/diff3 0.04
 #end plugs of converter, reduce by 18.5neV becuase submerged in lHe
-#/det/optpot4 230
-#/det/eta4 0.0001
-#/det/diff4 0.0
+/mat/optpot4 233.5
+/mat/eta4 0.00005
+/mat/diff4 0.04
+# Chopper plates
+/mat/optpot5 -49
+/mat/eta5 0.0
+/mat/diff5 1.0
+
+#shutter plug geometry height
+/det/valveheight -200
+# energy independent loss in helium
+/mat/helifetime 700
+# neutron life time
+/mat/nlifetime 880
 
 #shutter plug geometry height
 /det/valveheight -200

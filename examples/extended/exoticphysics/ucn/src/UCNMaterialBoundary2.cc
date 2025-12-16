@@ -42,8 +42,6 @@ G4String outputfile2 = "default2.txt";
 G4String outputfile3 = "default3.txt";
 //std::ofstream myfile(outputfile2, std::ofstream::app);
 
-//std::ofstream myfile1("output_for_husain.txt");
-//std::ofstream myfile2("myfile2.txt");
 /**
  * Add a state (0 - closed, 1 - open) at a given time
  * keeps the array sorted so you don't have to
@@ -88,7 +86,7 @@ int UCNShutterStates::GetState(float time) {
   }
   for (int i=0; i<n; i++) {
     if (time >= times[i]) {
-      state = states[i];
+        state = states[i];
     }
     else {
       break;
@@ -122,7 +120,6 @@ UCNMaterialBoundary2::UCNMaterialBoundary2(const G4String& processName, G4Proces
  // create a messenger for this class
   theMessenger = new UCNMaterialBoundary2Messenger(this);
 
-
 }
 
 UCNMaterialBoundary2::~UCNMaterialBoundary2(){
@@ -146,7 +143,6 @@ foilct = 0;
 justprinted = 0;
 num++;
 ezero = aTrack.GetKineticEnergy();
-G4cout << "opt1***********************" << opt1 << G4endl;
 
 /*
 G4cout << "Theory parameters for the source are " << G4endl;
@@ -155,7 +151,6 @@ G4cout << "opt2     " << opt2 << G4endl;
 G4cout << "opt3     " << opt3 << G4endl;
 G4cout << "eta1     " << eta1 << G4endl;
 G4cout << "eta2     " << eta2 << G4endl;
-G4cout << "eta3     " << eta3 << G4endl;
 G4cout << "lambda   " << lambda << G4endl;
 G4cout << "f_a      " << f_a << G4endl;
 G4cout << "f_h      " << f_h << G4endl;
@@ -169,7 +164,8 @@ G4cout << "Gamma3a  " << Gamma3a << G4endl;
 G4cout << "Gamma3h  " << Gamma3h << G4endl;
 G4cout << "C        " << C << G4endl;
 G4cout << "V        " << V << G4endl;
-*/ 
+*/
+
 
 }
 
@@ -187,7 +183,7 @@ justprinted = (int)(aTrack.GetGlobalTime()*1e-6+ timesteps);
 //G4cout <<  "**t = " << aTrack.GetGlobalTime() *1e-6 << ", "  << (int)(aTrack.GetGlobalTime() *1e-6)  << G4endl;
 
 std::ofstream myfile(outputfile2, std::ofstream::app);
-  myfile << " " << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<
+  myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<
                   aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << 
 		  pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime()*1e-6  << std::endl;
 }	
@@ -433,7 +429,7 @@ G4double foiltrans = exp(-mu*dx);
 
 G4double counted = G4UniformRand();
 if (counted > foiltrans){
-G4cout << "PP foil loss " << foiltrans << ", rnd=  " << counted << G4endl;
+G4cout << "Killed pp foil" << foiltrans << ", rnd=  " << counted << G4endl;
 
 	std::ofstream myfile(outputfile1, std::ofstream::app);
           myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<
@@ -451,7 +447,7 @@ if ( pPreStepPoint->GetPosition().getY() < -3500 ){
         // falling all the way down, passing stacked turtles 
         //
 //G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
-G4cout << " ********* falling down ******* " << G4endl;
+G4cout << "Falling down" << G4endl;
 
               std::ofstream myfile(outputfile1, std::ofstream::app);
           myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " << 
@@ -527,7 +523,7 @@ if ( aTrack.GetGlobalTime()*1e-9 > heliumlifetime){
         //G4cout << "helium loss " << G4endl;
 
 std::ofstream myfile(outputfile1, std::ofstream::app);
-G4cout << "helium loss " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
+G4cout << "Lost in helium " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
 
 myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "12000" << std::endl;
 
@@ -1111,7 +1107,40 @@ void UCNMaterialBoundary2::SetShutterVerbose(G4String newval){
 
 void UCNMaterialBoundary2::SetFileName1(G4String fil){
 outputfile1 = fil;
+G4cout << "List of Material Properties read from macro:" << G4endl;
+G4cout << "opt1     " << opt1 << G4endl;
+G4cout << "diff1     " << diff1 << G4endl;
+G4cout << "eta1     " << eta1 << G4endl;
+G4cout << "opt2     " << opt2 << G4endl;
+G4cout << "diff2     " << diff2 << G4endl;
+G4cout << "eta2     " << eta2 << G4endl;
+G4cout << "opt3     " << opt3 << G4endl;
+G4cout << "diff3     " << diff3 << G4endl;
+G4cout << "eta3     " << eta3 << G4endl;
 
+
+
+std::ofstream myfile(outputfile1, std::ofstream::app);
+  myfile << "# Exit Code Key:"<<std::endl;
+  myfile << "# 1000: Killed at pp foil"<<std::endl;
+  myfile << "# 2000: Reached maximum defined steps"<<std::endl;
+  myfile << "# 3000: Undefined"<<std::endl;
+  myfile << "# 4000: Undefined"<<std::endl;
+  myfile << "# 5000: Lost due to reflection"<<std::endl;
+  myfile << "# 6000: Absorbed by Boron in the detector"<<std::endl;
+  myfile << "# 7000: Other interaction with detector"<<std::endl;
+  myfile << "# 8000: Absorbed by AlMG3 foil"<<std::endl;
+  myfile << "# 9000: Undefined"<<std::endl;
+  myfile << "# 10000: Undefined"<<std::endl;
+  myfile << "# 11000: Beta decay"<<std::endl;
+  myfile << "# 12000: Helium loss"<<std::endl;
+  myfile << "# 13000: Reached maximum global time"<<std::endl;
+  myfile << "# 14000: Undefined"<<std::endl;
+  myfile << "# 15000: Falling down"<<std::endl;
+  myfile << "# 16000: Undefined"<<std::endl;
+  myfile << "# 17000: Killed in chopper blades"<<std::endl;
+  myfile << "# -------------------------------------------------------------------------------------------"<<std::endl;
+  myfile << "# KE[neV] px[unitless] py[unitless] pz[unitless] x[mm] y[mm] z[mm] t_global[s] t_chopper[s] x_chopper[mm] n_foil z_chopper[mm] px_chopper[unitless] py_chopper[unitless] Exit Code" << std::endl;
 //G4cout << "MaterialBoundary2: set outputfile1 " << fil << G4endl;
 }
 
@@ -1149,6 +1178,10 @@ foilabs = fil;
 }
 void UCNMaterialBoundary2::SetTime(G4double fil){
 timesteps = fil;
+if (timesteps > 0){ 
+std::ofstream myfile(outputfile2, std::ofstream::app);
+myfile << "# KE[neV] px[unitless] py[unitless] pz[unitless] x[mm] y[mm] z[mm] t_global[s]" << std::endl;
+}
 
 //G4cout << " set timesteps" << fil << G4endl;
 }
