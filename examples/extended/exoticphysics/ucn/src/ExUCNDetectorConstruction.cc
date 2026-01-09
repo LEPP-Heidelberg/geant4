@@ -434,9 +434,9 @@ G4double tiefe = 286.;
 // the downward tube into the converter volume
  G4double reducedheight = 0;
    rMax = 7*cm;
-//    rMin = 0.0*cm;
+    rMin = 0.0*cm;
 
-   rMin = 2.5*cm;
+//  rMin = 2.5*cm;
   G4Tubs *solidDownwardTube = new G4Tubs("SolidTubeD", rMin, rMax, 196./2. - reducedheight /2., 0., twopi);
   G4LogicalVolume *logicDownwardTube = new  G4LogicalVolume(solidDownwardTube,  GuideMaterial1, "SolidTubeD");
   G4RotationMatrix * zRot7 = new G4RotationMatrix();

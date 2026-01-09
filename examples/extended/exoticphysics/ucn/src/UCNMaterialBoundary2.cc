@@ -16,7 +16,7 @@
 #include <fstream>
 #include "G4SystemOfUnits.hh"
 
-
+G4bool isExcited = false;
 G4double chopper_t = 0;
 G4double chopper_x = 0;
 G4double chopper_y = 0;
@@ -30,11 +30,13 @@ G4double ezero = 0;
 G4double num = 0;
 G4double justprinted = 0;
 G4double meanHeLifetime = 500.;
+G4double meanDownShiftLifetime = 20.;
 G4double meanLifetime = 880.; 
 G4double inside_he = 0;
 G4double foilabs = 0;
 G4double timesteps = 0;
 G4double stepsbeforekill = 100000000000;
+G4double downShiftLifetime = 10000000000000.;
 G4double betadecaylifetime = 10000000000000.;
 G4double heliumlifetime = 10000000000000.;
 G4String outputfile1 = "default1.txt";
@@ -226,7 +228,7 @@ G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
 
 
 
-if (aTrack.GetGlobalTime()*1e-9 > 3000) {
+if (aTrack.GetGlobalTime()*1e-9 > 60) {
 G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
   G4StepPoint* pPostStepPoint = aStep.GetPostStepPoint();
 
@@ -250,7 +252,17 @@ G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
 // neutron life-time
 if (aTrack.GetCurrentStepNumber() == 1) {
 betadecaylifetime = -std::log(1.0 - G4UniformRand()) * meanLifetime;
+isExcited = false;
 }
+
+//isExcited = false;
+// excited_state
+if ((aTrack.GetCurrentStepNumber() == 1) && (G4UniformRand() < 0.2) ) {
+downShiftLifetime = -std::log(1.0 - G4UniformRand()) * meanDownShiftLifetime;
+isExcited = true;
+}
+
+ //G4cout << "********************* Excited ****************" << isExcited << G4endl; 
 
 // energy independent loss time inside helium
 if (aTrack.GetCurrentStepNumber() == 1) {
@@ -505,8 +517,9 @@ if (  pPreStepPoint->GetPosition().getX() > 150 ){
   G4Material* Material2 = pPostStepPoint->GetPhysicalVolume()->GetLogicalVolume()->GetMaterial();
  
   
-if ( aTrack.GetGlobalTime()*1e-9 > betadecaylifetime){
-	//G4cout << "beta decay " << G4endl;
+//if ( aTrack.GetGlobalTime()*1e-9 > betadecaylifetime){
+if ( (aTrack.GetGlobalTime() * 1e-9 > betadecaylifetime) && (isExcited == false)){ 
+//G4cout << "beta decay " << G4endl;
 
 std::ofstream myfile(outputfile1, std::ofstream::app);
 G4cout << "beta decay " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
@@ -518,6 +531,22 @@ return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
 
 
 }
+
+
+if ( (aTrack.GetGlobalTime()*1e-9 > downShiftLifetime) && (isExcited == true)){
+isExcited == false; 
+std::ofstream myfile(outputfile1, std::ofstream::app);
+G4cout << "downshift decay " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
+
+myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "10000" << std::endl;
+
+aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
+return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
+
+
+}
+
+
 
 if ( aTrack.GetGlobalTime()*1e-9 > heliumlifetime){
         //G4cout << "helium loss " << G4endl;
