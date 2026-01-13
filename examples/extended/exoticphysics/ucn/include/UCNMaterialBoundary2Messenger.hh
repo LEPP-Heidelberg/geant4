@@ -114,7 +114,10 @@ class UCNMaterialBoundary2Messenger: public G4UImessenger
          G4UIcmdWithADouble* setGamma3hCmd;
          G4UIcmdWithADouble* setu_minCmd;
          G4UIcmdWithADouble* setu_maxCmd;
-
+         // Excited States
+	 G4UIcmdWithADouble* setexcitedFracCmd;
+	 G4UIcmdWithADouble* setmeanDownShiftLifetimeCmd;
+	 // End Excited States
          G4UIcmdWithAString* setChopperFileCmd;
     
 };

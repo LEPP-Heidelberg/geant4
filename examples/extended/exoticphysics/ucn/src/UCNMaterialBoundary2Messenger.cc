@@ -190,6 +190,19 @@ setGamma3aCmd = new G4UIcmdWithADouble("/mat/Gamma3_a",this);
   setGamma3aCmd->SetParameterName("Gamma3_a",true);
   setGamma3aCmd->SetDefaultValue(1) ;
 
+//Adding excitation state logic
+
+setexcitedFracCmd = new G4UIcmdWithADouble("/mat/excitedFrac",this);
+  setexcitedFracCmd->SetParameterName("excitedFrac",true);
+  setexcitedFracCmd->SetDefaultValue(1);
+
+setmeanDownShiftLifetimeCmd = new G4UIcmdWithADouble("/mat/meanDownShiftLifetime",this);
+  setmeanDownShiftLifetimeCmd->SetParameterName("meanDownShiftLifetime",true);
+  setmeanDownShiftLifetimeCmd->SetDefaultValue(1);
+
+//
+
+
 setChopperFileCmd = new G4UIcmdWithAString("/mat/chopperfile",this);
   setChopperFileCmd->SetGuidance(" Set name of the chopper function file ");
   setChopperFileCmd->SetParameterName("chopperfile",true);
@@ -324,6 +337,12 @@ if( command == setGamma3aCmd)  {      fAction->SetGamma3a(setGamma3aCmd->GetNewD
 if( command == setGamma3hCmd)  {      fAction->SetGamma3h(setGamma3hCmd->GetNewDoubleValue(newValue));}
 if( command == setu_minCmd)  {      fAction->Setu_min(setu_minCmd->GetNewDoubleValue(newValue));}
 if( command == setu_maxCmd)  {      fAction->Setu_max(setu_maxCmd->GetNewDoubleValue(newValue));}
+// Excited States
+if( command == setexcitedFracCmd)  {      fAction->SetexcitedFrac(setexcitedFracCmd->GetNewDoubleValue(newValue));}
+if( command == setmeanDownShiftLifetimeCmd)  {      fAction->SetmeanDownShiftLifetime(setmeanDownShiftLifetimeCmd->GetNewDoubleValue(newValue));}
+// End Excited States
+
+
 //if( command == setChopperFileCmd)  {      fAction->SetChopperFunction(G4String(newValue));}
    /*
    if( command == setGunDirectionRangeCmd)

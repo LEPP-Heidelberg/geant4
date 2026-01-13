@@ -29,9 +29,8 @@ G4double foilct =0 ;
 G4double ezero = 0;
 G4double num = 0;
 G4double justprinted = 0;
-G4double excitedFrac = 0;
 G4double meanHeLifetime = 500.;
-G4double meanDownShiftLifetime = 0.000000000001;
+G4double meanDownShiftLifetime = 20.;
 G4double meanLifetime = 880.; 
 G4double inside_he = 0;
 G4double foilabs = 0;
@@ -256,11 +255,14 @@ betadecaylifetime = -std::log(1.0 - G4UniformRand()) * meanLifetime;
 isExcited = false;
 }
 
+//isExcited = false;
 // excited_state
-if ((aTrack.GetCurrentStepNumber() == 1) && (G4UniformRand() < excitedFrac) ) {
+if ((aTrack.GetCurrentStepNumber() == 1) && (G4UniformRand() < 0.2) ) {
 downShiftLifetime = -std::log(1.0 - G4UniformRand()) * meanDownShiftLifetime;
 isExcited = true;
 }
+
+ //G4cout << "********************* Excited ****************" << isExcited << G4endl; 
 
 // energy independent loss time inside helium
 if (aTrack.GetCurrentStepNumber() == 1) {
@@ -530,87 +532,18 @@ return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
 
 }
 
-//downshift stuff
-if ( (aTrack.GetGlobalTime()*1e-9 > downShiftLifetime) && (isExcited == true) && (Material1 != Material2)){
-	// Remove excited state glag 
-	isExcited = false;
 
-	// Reset the beta decay life clock to begin at de-excitation
-       	betadecaylifetime += aTrack.GetGlobalTime()*1e-9;	
-	
-	//Add momentum stuff here
-	G4double NeutronMass = G4Neutron::Neutron()->GetPDGMass();
-	G4double Energy = aTrack.GetKineticEnergy();
-	G4ThreeVector Momentum = aTrack.GetMomentum();
-	G4double PhotonEnergy = 4.0*eV; // This should be in a macro, 5eV -> 13.29neV
+if ( (aTrack.GetGlobalTime()*1e-9 > downShiftLifetime) && (isExcited == true)){
+isExcited == false; 
+std::ofstream myfile(outputfile1, std::ofstream::app);
+G4cout << "downshift decay " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
 
-	//Recoil Energy
-	G4double RecoilEnergy = (PhotonEnergy * PhotonEnergy) / (2.0 * NeutronMass); // This should be the energy imparted to the neutron
-	//NewEnergy = Energy + RecoilEnergy; // I think this is wrong -- Husain 
+myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "10000" << std::endl;
 
-	//Momentum Direction sampling math using random variables x1 x2, should be uniformly sampled in 3D space
-	G4double x1 = G4UniformRand();
-	G4double x2 = G4UniformRand(); 
+aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
+return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
 
-	G4double cosTheta = 1.0 - 2.0 * x1;
-	G4double sinTheta = std::sqrt(1.0 - cosTheta * cosTheta);
-	G4double phi = CLHEP::twopi * x2;
 
-	// Create the momentum vector in xyz from the random sampling (with length of RecoilEnergy, RecoilMomentum's magnitude is same as PhotonEnergy
-	G4double px = PhotonEnergy * std::cos(phi) * sinTheta;
-	G4double py = PhotonEnergy * std::sin(phi) * sinTheta;
-	G4double pz = PhotonEnergy * cosTheta;
-	G4ThreeVector RecoilMomentum = G4ThreeVector(px,py,pz);
-
-	G4cout << "The recoil momentum magnitude: " << RecoilMomentum.mag() << G4endl;
-	G4cout << "The recoil momentum direction: " << RecoilMomentum << G4endl;
-	G4cout << "The initial momentum direction: " << Momentum << G4endl;
-	// Calculate recoiled momentum
-	G4ThreeVector NewMomentum = Momentum - RecoilMomentum;
-	G4cout << "The new momentum direction: " << NewMomentum << G4endl;
-
-	// Normalize NewMomentum, then attach new energy and momentum to tracking
-	G4double NewEnergy = NewMomentum.mag2() / (2.0 * NeutronMass);
-	G4ThreeVector NewMomentum_full = NewMomentum; // This is a copy for diagnostics
-	NewMomentum /= NewMomentum.mag();
-	
-	// Record initial state for diagnostics
-	const G4double E_before = aTrack.GetKineticEnergy();
-	const G4ThreeVector p_before = aTrack.GetMomentum();
-	const G4ThreeVector dir_before = aTrack.GetMomentumDirection();
-
-	// Now Propose the new calculated unit vector momentum and kinetic energy to the track	
-	aParticleChange.Initialize(aTrack);
-	aParticleChange.ProposeMomentumDirection(NewMomentum);
-	aParticleChange.ProposeEnergy(NewEnergy);
-	
-	// Calculate changes
-	const G4double p_before_mag = p_before.mag();
-	const G4double p_after_mag  = NewMomentum_full.mag();
-	const G4double E_recoil_expected = (PhotonEnergy * PhotonEnergy) / (2.0 * NeutronMass);
-	
-	// Print diagnostic information and return
-	G4cout
-  	<< "\n[Downshift recoil applied]\n"
-  	<< "  Time                : " << aTrack.GetGlobalTime()/ns << " ns\n"
-  	<< "  Photon energy       : " << PhotonEnergy/eV << " eV\n"
-  	<< "  Expected recoil E   : " << E_recoil_expected/neV << " neV\n"
-  	<< "\n"
-  	<< "  Kinetic energy (before) : " << E_before/neV << " neV\n"
-  	<< "  Kinetic energy (after)  : " <<  NewEnergy/neV << " neV\n"
-  	<< "  Delta E                 : " << (NewEnergy - E_before)/neV << " neV\n"
-  	<< "\n"
-  	<< "  |p| before : " << p_before_mag/(eV) << " eV\n"
-  	<< "  |p| after  : " << p_after_mag/(eV)  << " eV\n"
-  	<< "\n"
-  	<< "  Direction before : " << dir_before << "\n"
-  	<< "  Direction after  : " << NewMomentum << "\n"
-  	<< G4endl;
-	
-	//G4cout
-        //<< "\n[Downshift recoil applied**************************]\n" << G4endl;
-	//return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
-	//return &aParticleChange;
 }
 
 
@@ -920,7 +853,7 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
 
                 G4cout << "KILL WHEN ENTERING CHOPPER BLADES!!!! " << G4endl;
 std::ofstream myfile(outputfile1, std::ofstream::app);
-   return &aParticleChange;     myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "17000" << std::endl;
+        myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "17000" << std::endl;
         // kill it.
         aParticleChange.ProposeTrackStatus( fStopAndKill ) ;                                                                                 return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);                                                                      
           }	  
@@ -1300,10 +1233,6 @@ void UCNMaterialBoundary2::SetC(G4double fil){C = fil;}
 void UCNMaterialBoundary2::SetV(G4double fil){V = fil;}
 void UCNMaterialBoundary2::Setf_a(G4double fil){f_a = fil;}
 void UCNMaterialBoundary2::Setf_h(G4double fil){f_h = fil;}
-// Excited States
-void UCNMaterialBoundary2::SetexcitedFrac(G4double fil){excitedFrac = fil;}
-void UCNMaterialBoundary2::SetmeanDownShiftLifetime(G4double fil){meanDownShiftLifetime = fil;}
-// End Excited States
 
 // replace Gamma1a e.g. with meanHeLifetime
 // replace Gamma2a e.g. with meanLifetime

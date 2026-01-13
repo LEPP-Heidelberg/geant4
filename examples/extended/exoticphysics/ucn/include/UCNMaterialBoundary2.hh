@@ -138,6 +138,10 @@ public:
   void SetGamma3h(G4double fil);
   void Setu_min(G4double fil);
   void Setu_max(G4double fil);
+// Excited States logic
+  void SetexcitedFrac(G4double fil);
+  void SetmeanDownShiftLifetime(G4double fil);
+// End excited states logic
 int read_two_column_file(const char* filename, double x[], double y[], std::size_t maxSize);
 G4double Chopperfunc(G4String fnam, G4double t) ;
 void SetChopperFunction(G4String fil);
@@ -195,7 +199,10 @@ G4double Gamma2h;
 G4double Gamma3a;
 G4double Gamma3h;
 
-
+// Excited States logic
+G4double excitedFrac;
+G4double meanDownShiftLifetime;
+// End excited states logic
 
 };
 

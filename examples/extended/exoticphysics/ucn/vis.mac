@@ -43,6 +43,10 @@
 /mat/eta5 0.0
 /mat/diff5 1.0
 
+# Excited State Settings, set excitedFrac = 0 to turn off 
+/mat/excitedFrac 0.0
+/mat/meanDownShiftLifetime 0.000000000001
+
 #shutter plug geometry height
 /det/valveheight -200
 # energy independent loss in helium
