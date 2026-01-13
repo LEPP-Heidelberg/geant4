@@ -190,8 +190,7 @@ setGamma3aCmd = new G4UIcmdWithADouble("/mat/Gamma3_a",this);
   setGamma3aCmd->SetParameterName("Gamma3_a",true);
   setGamma3aCmd->SetDefaultValue(1) ;
 
-//Adding excitation state logic
-
+// Excited States
 setexcitedFracCmd = new G4UIcmdWithADouble("/mat/excitedFrac",this);
   setexcitedFracCmd->SetParameterName("excitedFrac",true);
   setexcitedFracCmd->SetDefaultValue(1);
@@ -200,7 +199,10 @@ setmeanDownShiftLifetimeCmd = new G4UIcmdWithADouble("/mat/meanDownShiftLifetime
   setmeanDownShiftLifetimeCmd->SetParameterName("meanDownShiftLifetime",true);
   setmeanDownShiftLifetimeCmd->SetDefaultValue(1);
 
-//
+setE_recoilCmd = new G4UIcmdWithADouble("/mat/E_recoil",this);
+  setE_recoilCmd->SetParameterName("E_recoil",true);
+  setE_recoilCmd->SetDefaultValue(1);
+// End Excited States
 
 
 setChopperFileCmd = new G4UIcmdWithAString("/mat/chopperfile",this);
@@ -340,6 +342,7 @@ if( command == setu_maxCmd)  {      fAction->Setu_max(setu_maxCmd->GetNewDoubleV
 // Excited States
 if( command == setexcitedFracCmd)  {      fAction->SetexcitedFrac(setexcitedFracCmd->GetNewDoubleValue(newValue));}
 if( command == setmeanDownShiftLifetimeCmd)  {      fAction->SetmeanDownShiftLifetime(setmeanDownShiftLifetimeCmd->GetNewDoubleValue(newValue));}
+if( command == setE_recoilCmd)  {      fAction->SetE_recoil(setE_recoilCmd->GetNewDoubleValue(newValue));}
 // End Excited States
 
 

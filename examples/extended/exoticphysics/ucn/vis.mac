@@ -46,6 +46,7 @@
 # Excited State Settings, set excitedFrac = 0 to turn off 
 /mat/excitedFrac 0.0
 /mat/meanDownShiftLifetime 0.000000000001
+/mat/E_recoil 0.0
 
 #shutter plug geometry height
 /det/valveheight -200

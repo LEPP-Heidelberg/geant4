@@ -30,6 +30,7 @@ G4double ezero = 0;
 G4double num = 0;
 G4double justprinted = 0;
 G4double excitedFrac = 0;
+G4double E_recoil = 0;
 G4double meanHeLifetime = 500.;
 G4double meanDownShiftLifetime = 0.000000000001;
 G4double meanLifetime = 880.; 
@@ -253,7 +254,7 @@ G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
 // neutron life-time
 if (aTrack.GetCurrentStepNumber() == 1) {
 betadecaylifetime = -std::log(1.0 - G4UniformRand()) * meanLifetime;
-isExcited = false;
+isExcited = false; 
 }
 
 // excited_state
@@ -542,7 +543,7 @@ if ( (aTrack.GetGlobalTime()*1e-9 > downShiftLifetime) && (isExcited == true) &&
 	G4double NeutronMass = G4Neutron::Neutron()->GetPDGMass();
 	G4double Energy = aTrack.GetKineticEnergy();
 	G4ThreeVector Momentum = aTrack.GetMomentum();
-	G4double PhotonEnergy = 4.0*eV; // This should be in a macro, 5eV -> 13.29neV
+	G4double PhotonEnergy = E_recoil*eV; // This should be in a macro, 5eV -> 13.29neV
 
 	//Recoil Energy
 	G4double RecoilEnergy = (PhotonEnergy * PhotonEnergy) / (2.0 * NeutronMass); // This should be the energy imparted to the neutron
@@ -1303,6 +1304,7 @@ void UCNMaterialBoundary2::Setf_h(G4double fil){f_h = fil;}
 // Excited States
 void UCNMaterialBoundary2::SetexcitedFrac(G4double fil){excitedFrac = fil;}
 void UCNMaterialBoundary2::SetmeanDownShiftLifetime(G4double fil){meanDownShiftLifetime = fil;}
+void UCNMaterialBoundary2::SetE_recoil(G4double fil){E_recoil = fil;}
 // End Excited States
 
 // replace Gamma1a e.g. with meanHeLifetime
