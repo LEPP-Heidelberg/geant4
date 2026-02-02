@@ -74,7 +74,9 @@ class ExUCNDetectorConstructionMessenger: public G4UImessenger
     G4UIcmdWithADouble* setxGunDirectionCmd11;
     G4UIcmdWithADouble* setxGunDirectionCmd12;
     G4UIcmdWithADouble* setxGunDirectionCmd13;
-  G4UIcmdWithADouble* setxGunDirectionCmd14;
+    G4UIcmdWithADouble* setxGunDirectionCmd14;
+    G4UIcmdWithADouble* setxGunDirectionCmd15;
+    G4UIcmdWithADouble* setxGunDirectionCmd16;
  
     G4UIdirectory*     gunDirectory;
 

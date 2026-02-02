@@ -119,11 +119,12 @@ int main(int argc, char** argv)
   // Set mandatory initialization classes
   //
   // Detector construction
-  runManager->SetUserInitialization(new ExUCNDetectorConstruction());
+  auto detector = new ExUCNDetectorConstruction();
+  runManager->SetUserInitialization(detector);
   // Physics list
   runManager->SetUserInitialization(new ExUCNPhysicsList());
   // User action initialization
-  runManager->SetUserInitialization(new ExUCNActionInitialization());
+  runManager->SetUserInitialization(new ExUCNActionInitialization(detector));
 
   // Initialize G4 kernel
   //

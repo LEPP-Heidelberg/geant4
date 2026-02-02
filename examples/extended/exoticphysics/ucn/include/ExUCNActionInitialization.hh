@@ -32,18 +32,22 @@
 
 #include "G4VUserActionInitialization.hh"
 
-/// Action initialization class.
+class ExUCNDetectorConstruction;
 
+/// Action initialization class.
 class ExUCNActionInitialization : public G4VUserActionInitialization
 {
-  public:
-    ExUCNActionInitialization();
-    virtual ~ExUCNActionInitialization();
+public:
+    // Constructor takes detector pointer
+    ExUCNActionInitialization(ExUCNDetectorConstruction* det) : fDetector(det) {}
+    virtual ~ExUCNActionInitialization() {}
 
-    virtual void BuildForMaster() const;
-    virtual void Build() const;
+    // Geant4 hooks
+    virtual void BuildForMaster() const override;
+    virtual void Build() const override;
+
+private:
+    ExUCNDetectorConstruction* fDetector;  // pointer to detector
 };
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #endif

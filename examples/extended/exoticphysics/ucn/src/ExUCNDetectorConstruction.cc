@@ -88,6 +88,11 @@ G4double diff5 = 0.;
 
 G4double maxstp = 1;
 G4double valveheight = 0.;
+
+// SBI v2 Sanity Checks
+G4double converterRadius = 37.5;
+G4double converterLength = 3000./2;
+// End SBI v2
 ;//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 ExUCNDetectorConstruction::ExUCNDetectorConstruction() : fVacuum(0), fGuideMaterial(0)
@@ -529,25 +534,25 @@ G4cout << " z-position " << longzero << G4endl;
 
 
 // converter volume
-  G4Tubs *solidConverter = new G4Tubs("SolidConverter", 37.5, 150., 1500., 0., twopi);
+  G4Tubs *solidConverter = new G4Tubs("SolidConverter", converterRadius, 150., converterLength, 0., twopi);
   G4LogicalVolume *logicConverter = new  G4LogicalVolume(solidConverter,  GuideMaterial2, "SolidConverter");
   G4RotationMatrix * zRot13 = new G4RotationMatrix();
   logicConverter->SetUserLimits(stepLimit);
-  G4VPhysicalVolume *physiConvertre = new G4PVPlacement(zRot13, G4ThreeVector(-sideoffset - 2*cubesizehalf,-tiefe,longzero-1500.-convcubesize ), "Convertre", logicConverter, physiWorld, false, 0);
+  G4VPhysicalVolume *physiConvertre = new G4PVPlacement(zRot13, G4ThreeVector(-sideoffset - 2*cubesizehalf,-tiefe,longzero-converterLength-convcubesize ), "Convertre", logicConverter, physiWorld, false, 0);
 
 G4cout << "*** converter tube" << G4endl;
-G4cout << " inside radius " << 37.5 << G4endl;
-G4cout << " length " << 1500*2 << G4endl;
+G4cout << " inside radius " << converterRadius << G4endl;
+G4cout << " length " << converterLength*2 << G4endl;
 G4cout << " x-position " << -sideoffset - 2*cubesizehalf << G4endl;
 G4cout << " y-position " << -tiefe << G4endl;
 G4cout << " z-position " << longzero-1500.-convcubesize  << G4endl;
   
-  
+  // We scale up the plugs by 50/37.5 * converterRadius to keep the volume sealed
   // converter volume PLUGs
-  G4Tubs *solidConverterPlug = new G4Tubs("SolidConverterPlug1", 0., 50., 5., 0., twopi);
+  G4Tubs *solidConverterPlug = new G4Tubs("SolidConverterPlug1", 0., 50./37.5 * converterRadius, 5., 0., twopi);
   G4LogicalVolume *logicConverterPlug = new  G4LogicalVolume(solidConverterPlug,  GuideMaterial4, "SolidConverterPlug");
   logicConverterPlug->SetUserLimits(stepLimit);
-  G4VPhysicalVolume *physiConverterPlug = new G4PVPlacement(zRot13, G4ThreeVector(-sideoffset - 2*cubesizehalf,-tiefe,longzero-3005.-convcubesize), "Converterplug1", logicConverterPlug, physiWorld, false, 0);
+  G4VPhysicalVolume *physiConverterPlug = new G4PVPlacement(zRot13, G4ThreeVector(-sideoffset - 2*cubesizehalf,-tiefe,longzero-(converterLength*2+5.)-convcubesize), "Converterplug1", logicConverterPlug, physiWorld, false, 0);
 
 G4cout << "*** converter tube plug1" << G4endl;
 G4cout << " radius " << 50 << G4endl;
@@ -558,7 +563,7 @@ G4cout << " z-position " << longzero-3005.-convcubesize  << G4endl;
 
 
 //converter volume PLUGs
-  G4Tubs *solidConverterPlug2 = new G4Tubs("SolidConverterPlg2", 0., 50., 5., 0., twopi);
+  G4Tubs *solidConverterPlug2 = new G4Tubs("SolidConverterPlg2", 0., 50./37.5 * converterRadius, 5., 0., twopi);
   G4LogicalVolume *logicConverterPlug2 = new  G4LogicalVolume(solidConverterPlug2,  GuideMaterial4, "SolidConverterPlug2");
   logicConverterPlug2->SetUserLimits(stepLimit);
   G4VPhysicalVolume *physiConverterPlug2 = new G4PVPlacement(zRot13, G4ThreeVector(-sideoffset - 2*cubesizehalf,-tiefe,longzero+55.), "Converterplug2", logicConverterPlug2, physiWorld, false, 0);
@@ -1036,6 +1041,17 @@ void ExUCNDetectorConstruction::SetProperty14(G4double e){
 maxstp  = e;
 G4cout << "Detector construction, pass userprop14 from messenger: " << e << G4endl;}
 
+// SBI v2
+void ExUCNDetectorConstruction::SetProperty15(G4double e){
+converterRadius  = e;
+fConverterRadius = e;
+G4cout << "Detector construction, pass userprop15 from messenger: " << e << G4endl;}
+
+void ExUCNDetectorConstruction::SetProperty16(G4double e){
+converterLength  = e;
+fConverterLength  = e;
+G4cout << "Detector construction, pass userprop16 from messenger: " << e << G4endl;}
+// End SBI v2
 
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

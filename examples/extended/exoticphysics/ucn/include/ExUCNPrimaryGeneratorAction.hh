@@ -36,37 +36,44 @@
 
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "globals.hh"
-//#include "ExUCNDetectorConstruction.hh"
 
 class G4Event;
 class G4ParticleGun;
 class PrimaryGeneratorMessenger;
+class ExUCNDetectorConstruction; // forward declaration
 
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 class ExUCNPrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 {
-  public:
+public:
+    // existing default constructor
     ExUCNPrimaryGeneratorAction(void);
-//    ExUCNPrimaryGeneratorAction(ExUCNDetectorConstruction*);
+
+    // NEW constructor to accept detector pointer
+    ExUCNPrimaryGeneratorAction(ExUCNDetectorConstruction* det);
+
     virtual ~ExUCNPrimaryGeneratorAction();
 
     virtual void GeneratePrimaries(G4Event*);
-//  void GeneratePrimaries(G4Event*);
-    void SetGunEnergy_neV(G4double e) ;
-    G4double Espec(G4String fnam) ;
-    void SetEspec(G4String fil);
-int read_two_column_file(const char* filename, double x[], double y[], std::size_t maxSize);
 
-  private:
+    void SetGunEnergy_neV(G4double e);
+    G4double Espec(G4String fnam);
+    void SetEspec(G4String fil);
+    int read_two_column_file(const char* filename, double x[], double y[], std::size_t maxSize);
+
+private:
+    // existing members
     G4ParticleGun* fParticleGun;
     G4String Especfile;
-    G4double gunEnergy_neV,gunDirectionRange,gunMaxRad;
+    G4double gunEnergy_neV, gunDirectionRange, gunMaxRad;
     PrimaryGeneratorMessenger* fGunMessenger;
+
+    // NEW: pointer to detector
+    ExUCNDetectorConstruction* fDetector;
 };
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+//....oooOO0OOooo........oooOO0OOooo......
 
 #endif
 

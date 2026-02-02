@@ -43,7 +43,6 @@ class ExUCNDetectorConstructionMessenger;
 class G4UniformGravityField;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 class ExUCNDetectorConstruction : public G4VUserDetectorConstruction
 {
   public:
@@ -61,9 +60,14 @@ class ExUCNDetectorConstruction : public G4VUserDetectorConstruction
     virtual void SetProperty10(G4double e);
     virtual void SetProperty11(G4double e);
     virtual void SetProperty12(G4double e);
-   virtual void SetProperty13(G4double e);
- virtual void SetProperty14(G4double e);
-
+    virtual void SetProperty13(G4double e);
+    virtual void SetProperty14(G4double e);
+    // SBI v2 Sanity Checks
+    virtual void SetProperty15(G4double e);
+    virtual void SetProperty16(G4double e);
+    G4double GetConverterRadius() const { return fConverterRadius; }
+    G4double GetConverterLength() const { return fConverterLength; }
+    // End SBI v2 Sanity Checks
   public:
     virtual G4VPhysicalVolume* Construct();
     virtual void ConstructSDandField();
@@ -81,13 +85,19 @@ class ExUCNDetectorConstruction : public G4VUserDetectorConstruction
     G4Material* GuideMaterial4;
     G4Material* GuideMaterial5;
 
-
+    // SBI v2
+    // To pass the Converter Properties to the Gun`
+    G4double fConverterRadius;
+    G4double fConverterLength;
+    // End SBI v2
     ExUCNDetectorConstructionMessenger* fMessenger;
 
     static G4ThreadLocal G4UniformGravityField* fField;
 
   private:
     void DefineMaterials();
+
+
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

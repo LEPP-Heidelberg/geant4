@@ -116,6 +116,17 @@ G4cout << "create messenger for the UCN DetectorConstruction class " << G4endl;
   setxGunDirectionCmd14->SetParameterName("xv14",true);
   setxGunDirectionCmd14->SetDefaultValue(0.0) ;
 
+  // SBI v2 Sanity Checks
+       setxGunDirectionCmd15 = new G4UIcmdWithADouble("/det/converterRadius",this);
+  setxGunDirectionCmd15->SetGuidance("Set inner radius of converter volume in mm");
+  setxGunDirectionCmd15->SetParameterName("xv15",true);
+  setxGunDirectionCmd15->SetDefaultValue(0.0) ;
+
+       setxGunDirectionCmd16 = new G4UIcmdWithADouble("/det/converterLength",this);
+  setxGunDirectionCmd16->SetGuidance("Set length of converter volume in mm");
+  setxGunDirectionCmd16->SetParameterName("xv16",true);
+  setxGunDirectionCmd16->SetDefaultValue(0.0) ;
+  // End SBI v2 Sanity Checks
 
 
   //optpot1  
@@ -181,6 +192,8 @@ ExUCNDetectorConstructionMessenger::~ExUCNDetectorConstructionMessenger()
   delete setxGunDirectionCmd12;
   delete setxGunDirectionCmd13;
   delete setxGunDirectionCmd14;
+  delete setxGunDirectionCmd15;
+  delete setxGunDirectionCmd16;
 
 }
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -218,6 +231,12 @@ void ExUCNDetectorConstructionMessenger::SetNewValue(G4UIcommand* command, G4Str
   if( command == setxGunDirectionCmd14)
    { fAction->SetProperty14(setxGunDirectionCmd14->GetNewDoubleValue(newValue));}
 
+  // SBI v2 Sanity Checks
+  if( command == setxGunDirectionCmd15)
+   { fAction->SetProperty15(setxGunDirectionCmd15->GetNewDoubleValue(newValue));}
+  if( command == setxGunDirectionCmd16)
+   { fAction->SetProperty16(setxGunDirectionCmd16->GetNewDoubleValue(newValue));}
+  // End SBI v2 Sanity Checks
 
 }
 

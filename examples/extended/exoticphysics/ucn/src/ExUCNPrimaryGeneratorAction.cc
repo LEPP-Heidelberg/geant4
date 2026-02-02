@@ -47,7 +47,8 @@
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-ExUCNPrimaryGeneratorAction::ExUCNPrimaryGeneratorAction(void)
+ExUCNPrimaryGeneratorAction::ExUCNPrimaryGeneratorAction(ExUCNDetectorConstruction* DC)
+: fDetector(DC)
 //ExUCNPrimaryGeneratorAction::ExUCNPrimaryGeneratorAction(ExUCNDetectorConstruction* DC):fDetector(DC)
 {
   G4int n_particle = 1;
@@ -94,26 +95,27 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
   fParticleGun->GeneratePrimaryVertex(anEvent);
 */
-
-
-
+   // There variables read from the detector construction and defined the generator's properties here
+   G4double R = fDetector->GetConverterRadius() - 1.5;
+   G4double L = fDetector->GetConverterLength()*2;
+	
    G4double px=100.0,py=0.0,pz=0.0 ;
    G4ThreeVector spin(1,1,0);
    G4ThreeVector xaxis(1,0,0);
    G4ThreeVector yaxis(0,1,0);
 
-   G4double x1 = G4UniformRand()*72.-36.;
-   G4double z1  = G4UniformRand()*72.-36.;
+   G4double x1 = G4UniformRand()*72.-R;
+   G4double z1  = G4UniformRand()*72.-R;
    G4double radius1 = sqrt(x1*x1+z1*z1);
-   while (radius1 > 36.)
+   while (radius1 > R)
    {
-    x1 = G4UniformRand()*72.-36.;
-    z1  = G4UniformRand()*72.-36.;
+    x1 = G4UniformRand()*72.-R;
+    z1  = G4UniformRand()*72.-R;
    radius1 = sqrt(x1*x1+z1*z1);
    }
 
-   G4double longi = G4UniformRand()*2990;
-   G4ThreeVector gunPositionShift(x1 - 270 - 80 , z1- 286., -3000 + longi);
+   G4double longi = G4UniformRand()*(L-10.);
+   G4ThreeVector gunPositionShift(x1 - 270 - 80 , z1- 286., -L + longi);
    G4double offset = 0;
    G4double particleEnergy = (Espec(Especfile)+offset) * 1e-9*eV;
 
