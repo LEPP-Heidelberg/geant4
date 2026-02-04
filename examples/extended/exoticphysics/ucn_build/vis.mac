@@ -1,0 +1,80 @@
+# Macro file for SuperSUN simulation
+# when running in interactive mode
+#/control/verbose 2
+#/control/saveHistory
+#/run/verbose 2#
+
+#/vis/open
+#/vis/scene/add/trajectories
+#/vis/drawVolume
+#/vis/scene/endOfEventAction accumulate
+
+#/vis/viewer/set/viewpointVector -1 0 0
+#/vis/viewer/set/lightsVector -1 0 0
+#/vis/viewer/set/style wireframe
+#/vis/viewer/set/auxiliaryEdge true
+#/vis/viewer/set/lineSegmentsPerCircle 100
+
+#/vis/scene/add/trajectories smooth
+#/vis/scene/add/scale   # Simple scale line
+#/vis/scene/add/axes    # Simple axes: x=red, y=green, z=blue.
+
+# guide away from source, 90 deg bend, tube below chopper blades
+# set the file of the starting spectrum
+/gun/spectrumfile spec.dat
+/det/converterRadius 37.5
+/det/converterLength 1500.0
+
+# tube above chopper blades, tube to detector
+/mat/optpot1 183
+/mat/eta1 0.0001
+/mat/diff1 0.04
+# converter volume (INSIDE LIQUID HELIUM, therfore 18.5 neV reduced potential
+/mat/optpot2 96.5
+/mat/eta2 0.00005
+/mat/diff2 0.02
+# cube inside the converter. reduce by 18.5 because submerged in lHe
+/mat/optpot3 233.5
+/mat/eta3 0.00005
+/mat/diff3 0.04
+#end plugs of converter, reduce by 18.5neV becuase submerged in lHe
+/mat/optpot4 233.5
+/mat/eta4 0.00005
+/mat/diff4 0.04
+# Chopper plates
+/mat/optpot5 -49
+/mat/eta5 0.0
+/mat/diff5 1.0
+
+# Excited State Settings, set excitedFrac = 0 to turn off 
+/mat/excitedFrac 0.0
+/mat/meanDownShiftLifetime 0.000000000001
+/mat/E_recoil 0.0
+
+#shutter plug geometry height
+/det/valveheight -200
+# energy independent loss in helium
+/mat/helifetime 700
+# neutron life time
+/mat/nlifetime 880
+
+#shutter plug geometry height
+/det/valveheight -200
+# energy independent loss in helium
+/mat/helifetime 300000000000
+# neutron life time
+/mat/nlifetime 88000000000
+# foil loss cross section0
+/mat/foil 0.000000000001
+# number of steps before particle is artificially killed
+/mat/numofsteps 10000000000
+# file name of output from materialboundaryprocess
+/mat/outputfile1 output31.txt
+# use time steps to dump track information
+/mat/outputfile2 snapshot.txt
+# set time for timesteps in milliseconds. (if set to zero or commented out, no output is generated)
+/mat/timesteps 0 # was 100
+# set maximum step size for all source geometries (all the same)
+/det/stepsize 100
+# how many particles are run
+/run/beamOn 1
