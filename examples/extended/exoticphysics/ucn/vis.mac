@@ -24,7 +24,7 @@
 /gun/spectrumfile spec.dat
 # tube above chopper blades, tube to detector
 /det/converterRadius 37.5
-/der/converterLength 1500
+/det/converterLength 1500
 
 /mat/optpot1 183
 /mat/eta1 0.0001
