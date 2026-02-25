@@ -29,6 +29,9 @@
 # set the file of the starting spectrum
 /gun/spectrumfile spec.dat
 # tube above chopper blades, tube to detector
+/det/converterRadius 37.5
+/det/converterLength 1500
+
 /mat/optpot1 183
 /mat/eta1 0.0001
 /mat/diff1 0.04
