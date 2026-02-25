@@ -142,6 +142,7 @@ public:
   void SetexcitedFrac(G4double fil);
   void SetmeanDownShiftLifetime(G4double fil);
   void SetE_recoil(G4double fil);
+  void SetmaxGlobalTime(G4double fil);
 // End Sxcited States
 int read_two_column_file(const char* filename, double x[], double y[], std::size_t maxSize);
 G4double Chopperfunc(G4String fnam, G4double t) ;
@@ -204,6 +205,7 @@ G4double Gamma3h;
 G4double excitedFrac;
 G4double meanDownShiftLifetime;
 G4double E_recoil;
+G4double setMaxGlobalTime;
 // End Excited States
 
 };

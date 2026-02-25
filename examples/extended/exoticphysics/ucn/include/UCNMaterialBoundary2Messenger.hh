@@ -118,6 +118,7 @@ class UCNMaterialBoundary2Messenger: public G4UImessenger
 	 G4UIcmdWithADouble* setexcitedFracCmd;
 	 G4UIcmdWithADouble* setmeanDownShiftLifetimeCmd;
 	 G4UIcmdWithADouble* setE_recoilCmd;
+	 G4UIcmdWithADouble* setmaxGlobalTimeCmd; 
 	 // End Excited States
          G4UIcmdWithAString* setChopperFileCmd;
     

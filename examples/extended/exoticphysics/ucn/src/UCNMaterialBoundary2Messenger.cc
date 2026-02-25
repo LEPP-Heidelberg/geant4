@@ -202,6 +202,10 @@ setmeanDownShiftLifetimeCmd = new G4UIcmdWithADouble("/mat/meanDownShiftLifetime
 setE_recoilCmd = new G4UIcmdWithADouble("/mat/E_recoil",this);
   setE_recoilCmd->SetParameterName("E_recoil",true);
   setE_recoilCmd->SetDefaultValue(1);
+
+setmaxGlobalTimeCmd = new G4UIcmdWithADouble("/mat/maxGlobalTime",this);
+setmaxGlobalTimeCmd->SetParameterName("maxGlobalTime",true);
+  setmaxGlobalTimeCmd ->SetDefaultValue(1);
 // End Excited States
 
 
@@ -343,6 +347,7 @@ if( command == setu_maxCmd)  {      fAction->Setu_max(setu_maxCmd->GetNewDoubleV
 if( command == setexcitedFracCmd)  {      fAction->SetexcitedFrac(setexcitedFracCmd->GetNewDoubleValue(newValue));}
 if( command == setmeanDownShiftLifetimeCmd)  {      fAction->SetmeanDownShiftLifetime(setmeanDownShiftLifetimeCmd->GetNewDoubleValue(newValue));}
 if( command == setE_recoilCmd)  {      fAction->SetE_recoil(setE_recoilCmd->GetNewDoubleValue(newValue));}
+if( command == setmaxGlobalTimeCmd)  {      fAction->SetmaxGlobalTime(setmaxGlobalTimeCmd->GetNewDoubleValue(newValue));}
 // End Excited States
 
 

@@ -144,7 +144,7 @@ int main(int argc, char** argv)
 
   G4UImanager* UImanager = G4UImanager::GetUIpointer();
  std::ofstream myfile("start.txt", std::ofstream::app);                                                                                   
- myfile << "# Energy[neV] x[mm] y[mm] z[mm]" << std::endl;
+ myfile << "# Energy[neV] px py pz x[mm] y[mm] z[mm]" << std::endl;
 
  if (macro.size()) {
     // batch mode

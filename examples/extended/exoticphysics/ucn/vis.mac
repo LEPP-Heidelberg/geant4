@@ -19,6 +19,12 @@
 #/vis/scene/add/scale   # Simple scale line
 #/vis/scene/add/axes    # Simple axes: x=red, y=green, z=blue.
 
+/det/converterRadius 37.5
+/det/converterLength 1500
+
+# set mono energy
+#/gun/gunEnergyneV 20
+
 # guide away from source, 90 deg bend, tube below chopper blades
 # set the file of the starting spectrum
 /gun/spectrumfile spec.dat
@@ -47,7 +53,7 @@
 /mat/excitedFrac 0.0
 /mat/meanDownShiftLifetime 0.000000000001
 /mat/E_recoil 0.0
-
+/mat/maxGlobalTime 30
 #shutter plug geometry height
 /det/valveheight -200
 # energy independent loss in helium
@@ -55,18 +61,12 @@
 # neutron life time
 /mat/nlifetime 880
 
-#shutter plug geometry height
-/det/valveheight -200
-# energy independent loss in helium
-/mat/helifetime 300000000000
-# neutron life time
-/mat/nlifetime 88000000000
 # foil loss cross section0
 /mat/foil 0.000000000001
 # number of steps before particle is artificially killed
 /mat/numofsteps 10000000000
 # file name of output from materialboundaryprocess
-/mat/outputfile1 output31.txt
+/mat/outputfile1 output.txt
 # use time steps to dump track information
 /mat/outputfile2 snapshot.txt
 # set time for timesteps in milliseconds. (if set to zero or commented out, no output is generated)
@@ -74,4 +74,4 @@
 # set maximum step size for all source geometries (all the same)
 /det/stepsize 100
 # how many particles are run
-/run/beamOn 100
+/run/beamOn 10000

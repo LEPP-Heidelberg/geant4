@@ -92,7 +92,7 @@ void ExUCNExtraPhysics::ConstructProcess()
   ConstructUCN();
 
   // G4Transportation::EnableMagneticMoment();
-  G4Transportation::EnableGravity();
+  //G4Transportation::EnableGravity();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

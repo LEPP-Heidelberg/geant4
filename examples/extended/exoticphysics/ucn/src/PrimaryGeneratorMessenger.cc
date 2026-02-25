@@ -145,7 +145,7 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
    {fAction->SetzGunDirection(setzGunDirectionCmd->GetNewDoubleValue(newValue));}
  */
    if( command == setGunEnergy_neVCmd)
-   {// fAction->SetGunEnergy_neV(setGunEnergy_neVCmd->GetNewDoubleValue(newValue));
+   { fAction->SetGunEnergy_neV(setGunEnergy_neVCmd->GetNewDoubleValue(newValue));
    }
 /*
    if( command == setGunDirectionRangeCmd)

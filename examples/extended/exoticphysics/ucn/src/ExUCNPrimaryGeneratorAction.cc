@@ -117,9 +117,9 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
    G4double longi = G4UniformRand()*(L-10.);
    G4ThreeVector gunPositionShift(x1 - 270 - 80 , z1- 286., -L + longi);
    G4double offset = 0;
-   G4double particleEnergy = (Espec(Especfile)+offset) * 1e-9*eV;
+   //`G4double particleEnergy = (Espec(Especfile)+offset) * 1e-9*eV;
 
-   //particleEnergy = gunEnergy_neV * 1e-15;
+   G4double particleEnergy = gunEnergy_neV * 1e-9 * eV;
    //gunPositionShift.setY(-286.);
   // monoenergetic spectrum
 //particleEnergy = 60*1e-15;
@@ -127,12 +127,12 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
    fParticleGun->SetParticlePosition(gunPositionShift);
    fParticleGun->SetParticleEnergy(particleEnergy);
-   G4cout << "E = " << particleEnergy << G4endl;
-   //G4cout << " energy " << gunEnergy_neV << G4endl;
+   //G4cout << "E = " << particleEnergy << G4endl;
+   G4cout << " energy " << gunEnergy_neV << G4endl;
 
 std::ofstream myfile("start.txt", std::ofstream::app);
 //std::ofstream myfile("start.txt");
-   myfile << particleEnergy*1e15 <<  " "  << gunPositionShift.getX() << " " << gunPositionShift.getY()  << " " << gunPositionShift.getZ() <<  std::endl;
+   //myfile << particleEnergy*1e15 <<  " "  << gunPositionShift.getX() << " " << gunPositionShift.getY()  << " " << gunPositionShift.getZ() <<  std::endl;
 
 
   //G4cout << "Distribution of angular distribution following: " << Angspecfile << G4endl;
@@ -158,7 +158,7 @@ std::ofstream myfile("start.txt", std::ofstream::app);
     G4ThreeVector startmom(mx,my,mz);
 	    
     
-    
+    myfile << particleEnergy*1e15 <<  " " << startmom.getX() << " " << startmom.getY() << " " << startmom.getZ() << " " << gunPositionShift.getX() << " " << gunPositionShift.getY()  << " " << gunPositionShift.getZ() <<  std::endl;  
     G4cout << "startmomem " << startmom.getX() << ";" << startmom.getY() << ";" << startmom.getZ() << G4endl;
 
     fParticleGun->SetParticleMomentumDirection(startmom.unit());

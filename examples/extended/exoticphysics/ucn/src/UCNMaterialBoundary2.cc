@@ -38,12 +38,14 @@ G4double inside_he = 0;
 G4double foilabs = 0;
 G4double timesteps = 0;
 G4double stepsbeforekill = 100000000000;
+G4double maxGlobalTime = 0.0;
 G4double downShiftLifetime = 10000000000000.;
 G4double betadecaylifetime = 10000000000000.;
 G4double heliumlifetime = 10000000000000.;
 G4String outputfile1 = "default1.txt";
 G4String outputfile2 = "default2.txt";
 G4String outputfile3 = "default3.txt";
+G4double remember_random = 0;
 //std::ofstream myfile(outputfile2, std::ofstream::app);
 
 /**
@@ -220,7 +222,7 @@ if (aTrack.GetCurrentStepNumber() == stepsbeforekill) {
 G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
   G4StepPoint* pPostStepPoint = aStep.GetPostStepPoint();
 
- G4cout << "reached number of steps " << aTrack.GetCurrentStepNumber() << ", time "
+ G4cout << "Reached maximum number of steps " << aTrack.GetCurrentStepNumber() << ", time "
 	 << aTrack.GetGlobalTime()  << G4endl;
   aParticleChange.Initialize(aTrack);
  aParticleChange.ProposeTrackStatus(fStopAndKill);
@@ -230,12 +232,13 @@ G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
 
 
 
-if (aTrack.GetGlobalTime()*1e-9 > 60) {
+if (aTrack.GetGlobalTime()*1e-9 > maxGlobalTime) {
+
 G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
   G4StepPoint* pPostStepPoint = aStep.GetPostStepPoint();
 
- G4cout << "reached defined max age" << aTrack.GetCurrentStepNumber() << ", time "
-         << aTrack.GetGlobalTime() *1e-9 << G4endl;
+ G4cout << "Reached defined max age: " << maxGlobalTime << "s, at Step Number: " << aTrack.GetCurrentStepNumber() << ", global time "
+         << aTrack.GetGlobalTime() *1e-9 << "s" <<G4endl;
   aParticleChange.Initialize(aTrack);
  
       std::ofstream myfile(outputfile1, std::ofstream::app);
@@ -316,7 +319,7 @@ if (usehe == 1){
     //G4cout << "tfakt " << tfakt << G4endl;
     G4double velnorm = vel * tfakt;
     //G4cout << "velnorm " << velnorm << G4endl;
-    G4double enormal = vel*vel/2.* 1.6749e-27; // CLHEP::neutron_mass_c2/neV;
+    G4double enormal = vel*vel/2.* 1.6749e-27; // 1.6749e-27; CLHEP::neutron_mass_c2/neV;
     // 18.5 nano electron volts (n eV) is equal to 2.9637 x 10^-27 joules.
     G4double enormal_new = enormal + 2.9639e-27; // joules
     //G4cout << "enormal " << enormal  * 6.242e27 << G4endl;
@@ -721,7 +724,7 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
 /*
   if ( Material2->GetName() == "Detector1"){
 	  myfile1 << aTrack.GetKineticEnergy()/neV << aTrack.GetMomentumDirection() << pPreStepPoint->GetPosition()   <<  aTrack.GetGlobalTime() << aTrack.GetPolarization() << std::endl;
-	  aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
+	
  return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
   }
   if ( Material2->GetName() == "Detector2"){
@@ -857,12 +860,16 @@ if (Material1 == Material2)  return G4VDiscreteProcess::PostStepDoIt(aTrack, aSt
    G4double R_sq = (part1)/(part2);
    G4double reflection = R_sq;
    // until here
+   //G4cout << "Just reflected: " << just_reflected << "\nStep number: " << aTrack.GetCurrentStepNumber() << "\nP(up scatter): " << pupscatter << "\nFermipot: " << fermipot <<  "\nReflection: " << reflection << "\n\n" << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << "\n\n" << G4endl;  
 
-
+// if (true): All particle hit the wall once and die
+// if (rnd1 > reflection && just_reflected == 0): Particle is stuck (possible geom overlap)
+//
 
   if (comparepot(enormal, fermipot_diff) == 0){             // below critical velocity
       /////// losses
       G4double rnd1 = G4UniformRand();
+      remember_random = rnd1;
 //G4cout << " below crit, ref = " << reflection << " rnd " << rnd1 << G4endl;
 
       if (rnd1 > reflection){             // loss on reflection
@@ -877,22 +884,25 @@ if (Material1 == Material2)  return G4VDiscreteProcess::PostStepDoIt(aTrack, aSt
       ///
 
           //    G4cout << "reflect it! " << G4endl;
-
       G4ThreeVector ref = reflect(0, pdiffus, momdir, theGlobalNormal);
       ref = ref.unit();
       aParticleChange.ProposeMomentumDirection(ref);
       just_reflected = 1;
   }
   else {                                      // transmit material
-       if (just_reflected == 0){
+	  
+	  if (just_reflected == 0){
           G4double rnd2 = G4UniformRand();
+	  if (remember_random){ rnd2 = remember_random; remember_random = 0; }
           if (rnd2 <  reflection){
-            G4cout << "above v_c reflect " << G4endl;
+            //G4cout << "above v_c reflect " << G4endl;
                 ////// reflect it
           G4ThreeVector ref = reflect(0, pdiffus, momdir, theGlobalNormal);
-          aParticleChange.ProposeMomentumDirection(ref);
+          aParticleChange.ProposeMomentumDirection(ref.unit());
           just_reflected = 1;
           } 
+	  
+
         /*
 	  else {
 
@@ -911,9 +921,17 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
 
 
                 //if (reflection < 0.000000001) return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
+	
+         // If NOT in chopper
+         // SANITY CHECK --------------------------------------------------- 
+	 std::ofstream myfile(outputfile1, std::ofstream::app);   
+	 myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "5000" << std::endl;
+          // kill it.
+          aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
+          return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
+          // END SANITY CHECK ----------------------------------------------- 
 
-
-        if ( fermipot < 0  ){
+       /* if ( fermipot < 0  ){
 
 
 
@@ -924,21 +942,23 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
    return &aParticleChange;     myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "17000" << std::endl;
         // kill it.
         aParticleChange.ProposeTrackStatus( fStopAndKill ) ;                                                                                 return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);                                                                      
-          }	  
-          //G4cout << "above vc transmi" << G4endl; 
+          } */ 
+
+	    
+          G4cout << "above vc transmit" << G4endl; 
           // --- transmission because it is faster than the critical velocity
           G4double enew = transmit(fermipot_diff, energy);
           G4double m = -sqrt(momnorm*momnorm - CLHEP::neutron_mass_c2*2.*fermipot_diff*neV);
           G4ThreeVector ref = mom - (momnorm-m)*theGlobalNormal;
           aParticleChange.ProposeMomentumDirection(ref.unit());
-          aParticleChange.ProposeEnergy(enew*neV);
+          aParticleChange.ProposeEnergy(enew*neV); 
+	  
          }    
        }
        else if (just_reflected == 1){
         just_reflected = 0 ;
       }
-  }  
-
+  }   
 
 
 // this is the approximated reflection probability as it was used in the past
@@ -1128,13 +1148,13 @@ G4ThreeVector UCNMaterialBoundary2::cos_diff(G4ThreeVector localnormal)
   momentum.rotateUz(localnormal);
   if(momentum*localnormal<0) {momentum*=-1;G4cout << "!" << G4endl;}
   
-  if(momentum*localnormal<0.03){
-    while(momentum*localnormal<0.03){
-       momentum.setRThetaPhi(1., acos(sqrt(G4UniformRand())), 2.*CLHEP::pi*G4UniformRand());
-        momentum.rotateUz(localnormal);
-    }
+  //if(momentum*localnormal<0.03){
+  //  while(momentum*localnormal<0.03){
+  //     momentum.setRThetaPhi(1., acos(sqrt(G4UniformRand())), 2.*CLHEP::pi*G4UniformRand());
+  //      momentum.rotateUz(localnormal);
+  //  }
 
-  }
+  //}
 
   return momentum;
 }
@@ -1305,6 +1325,7 @@ void UCNMaterialBoundary2::Setf_h(G4double fil){f_h = fil;}
 void UCNMaterialBoundary2::SetexcitedFrac(G4double fil){excitedFrac = fil;}
 void UCNMaterialBoundary2::SetmeanDownShiftLifetime(G4double fil){meanDownShiftLifetime = fil;}
 void UCNMaterialBoundary2::SetE_recoil(G4double fil){E_recoil = fil;}
+void UCNMaterialBoundary2::SetmaxGlobalTime(G4double fil){maxGlobalTime = fil;}
 // End Excited States
 
 // replace Gamma1a e.g. with meanHeLifetime
