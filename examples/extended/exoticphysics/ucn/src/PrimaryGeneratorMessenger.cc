@@ -81,6 +81,13 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(ExUCNPrimaryGeneratorAction
   setGunEnergy_neVCmd->SetParameterName("e",true);
   setGunEnergy_neVCmd->SetDefaultValue(0.0) ;
 
+  // SBI v2 
+  settACmd = new G4UIcmdWithADouble("/gun/tA",this);
+  settACmd->SetGuidance("Set UCN accumulation duration");
+  settACmd->SetParameterName("e",true);
+  settACmd->SetDefaultValue(0.0) ;
+  // End SBI v2
+
   setGunDirectionRangeCmd = new G4UIcmdWithADouble("/gun/gunDirectionRange",this);
   setGunDirectionRangeCmd->SetGuidance(" Set gun direction range (centered around the gun direction)");
   setGunDirectionRangeCmd->SetParameterName("xv",true);
@@ -144,6 +151,10 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
   if( command == setzGunDirectionCmd)
    {fAction->SetzGunDirection(setzGunDirectionCmd->GetNewDoubleValue(newValue));}
  */
+
+   // SBI v2
+   if(command == settACmd){ fAction->SettA(settACmd->GetNewDoubleValue(newValue)); }
+   // End SBI v2	
    if( command == setGunEnergy_neVCmd)
    { fAction->SetGunEnergy_neV(setGunEnergy_neVCmd->GetNewDoubleValue(newValue));
    }

@@ -209,7 +209,7 @@ setmaxGlobalTimeCmd->SetParameterName("maxGlobalTime",true);
 // End Excited States
 
 
-setChopperFileCmd = new G4UIcmdWithAString("/mat/chopperfile",this);
+setChopperFileCmd = new G4UIcmdWithAString("/mat/chopperFile",this);
   setChopperFileCmd->SetGuidance(" Set name of the chopper function file ");
   setChopperFileCmd->SetParameterName("chopperfile",true);
   setChopperFileCmd->SetDefaultValue("chopperfunction.dat") ;
@@ -255,6 +255,7 @@ UCNMaterialBoundary2Messenger::~UCNMaterialBoundary2Messenger()
   delete setstepsCmd;
     delete setfoilCmd;
     delete settimeCmd;
+  delete setChopperFileCmd;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -351,7 +352,7 @@ if( command == setmaxGlobalTimeCmd)  {      fAction->SetmaxGlobalTime(setmaxGlob
 // End Excited States
 
 
-//if( command == setChopperFileCmd)  {      fAction->SetChopperFunction(G4String(newValue));}
+if( command == setChopperFileCmd)  {fAction->SetChopperFunction(G4String(newValue));} // Uncommented on 30.03.2026 by Husain Mansawala
    /*
    if( command == setGunDirectionRangeCmd)
    { fAction->SetGunDirectionRange(setGunDirectionRangeCmd->GetNewDoubleValue(newValue));}

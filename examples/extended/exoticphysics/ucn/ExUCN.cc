@@ -77,7 +77,7 @@ int main(int argc, char** argv)
   G4String session;
   G4int nThreads = 0;
 
-  G4long myseed = 1234;
+  G4long myseed = 1234*G4UniformRand();
   for (G4int i = 1; i < argc; i = i + 2) {
     if (G4String(argv[i]) == "-m")
       macro = argv[i + 1];
@@ -141,7 +141,7 @@ int main(int argc, char** argv)
 
   // Get the pointer to the User Interface manager
   //
-
+  
   G4UImanager* UImanager = G4UImanager::GetUIpointer();
  std::ofstream myfile("start.txt", std::ofstream::app);                                                                                   
  myfile << "# Energy[neV] px py pz x[mm] y[mm] z[mm]" << std::endl;

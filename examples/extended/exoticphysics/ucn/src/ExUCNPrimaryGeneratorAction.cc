@@ -117,9 +117,9 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
    G4double longi = G4UniformRand()*(L-10.);
    G4ThreeVector gunPositionShift(x1 - 270 - 80 , z1- 286., -L + longi);
    G4double offset = 0;
-   //`G4double particleEnergy = (Espec(Especfile)+offset) * 1e-9*eV;
+   G4double particleEnergy = (Espec(Especfile)+offset) * 1e-9*eV;
 
-   G4double particleEnergy = gunEnergy_neV * 1e-9 * eV;
+   //G4double particleEnergy = gunEnergy_neV * 1e-9 * eV;
    //gunPositionShift.setY(-286.);
   // monoenergetic spectrum
 //particleEnergy = 60*1e-15;
@@ -127,8 +127,8 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
    fParticleGun->SetParticlePosition(gunPositionShift);
    fParticleGun->SetParticleEnergy(particleEnergy);
-   //G4cout << "E = " << particleEnergy << G4endl;
-   G4cout << " energy " << gunEnergy_neV << G4endl;
+   G4cout << "E = " << particleEnergy << G4endl;
+   //G4cout << " energy " << gunEnergy_neV << G4endl;
 
 std::ofstream myfile("start.txt", std::ofstream::app);
 //std::ofstream myfile("start.txt");
@@ -162,6 +162,10 @@ std::ofstream myfile("start.txt", std::ofstream::app);
     G4cout << "startmomem " << startmom.getX() << ";" << startmom.getY() << ";" << startmom.getZ() << G4endl;
 
     fParticleGun->SetParticleMomentumDirection(startmom.unit());
+    
+    // SBI v2 
+    if (tA > 0.0){fParticleGun->SetParticleTime(tA * G4UniformRand() * s);} 
+    // End SBI v2	
 /*
   if (Angspeclogfile.length() > 0){
          char stri[1000]; sprintf(stri, "%f %f %f %f %f %f %f", particleEnergy*1e9*1e6 ,
@@ -171,7 +175,7 @@ std::ofstream myfile("start.txt", std::ofstream::app);
          if (examplefile.is_open()){ examplefile << stri << " " ; examplefile.close();}
   }
 */
-
+	
 
 
     fParticleGun->GeneratePrimaryVertex(anEvent);
@@ -255,9 +259,17 @@ void ExUCNPrimaryGeneratorAction::SetGunEnergy_neV(G4double e)
   G4cout << " Energy the gun = " << gunEnergy_neV << " neV" << G4endl;
 }
 
+// SBI v2
+// This function takes a user input to uniformly add a number betwenn [0, tA] to the particle time
+void ExUCNPrimaryGeneratorAction::SettA(G4double e)
+{
+	tA = e;
+	G4cout << "Note: Particles will be initialised with times uniformly spread over [0, " << tA << "]." << G4endl;
+} 
+//
+
 void ExUCNPrimaryGeneratorAction::SetEspec(G4String fil){
 Especfile = fil;
-
 //G4cout << " set energy spec " << fil << G4endl;
 }
 

@@ -62,13 +62,19 @@ public:
     void SetEspec(G4String fil);
     int read_two_column_file(const char* filename, double x[], double y[], std::size_t maxSize);
 
+    // SBI v2
+    void SettA(G4double e);
+    // End SBI v2
+
 private:
     // existing members
     G4ParticleGun* fParticleGun;
     G4String Especfile;
     G4double gunEnergy_neV, gunDirectionRange, gunMaxRad;
     PrimaryGeneratorMessenger* fGunMessenger;
-
+    // SBI v2
+    G4double tA;
+    // End SBI v2
     // NEW: pointer to detector
     ExUCNDetectorConstruction* fDetector;
 };

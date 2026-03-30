@@ -4,20 +4,20 @@
 #/control/saveHistory
 #/run/verbose 2#
 
-#/vis/open
-#/vis/scene/add/trajectories
-#/vis/drawVolume
-#/vis/scene/endOfEventAction accumulate
+/vis/open
+/vis/scene/add/trajectories
+/vis/drawVolume
+/vis/scene/endOfEventAction accumulate
 
-#/vis/viewer/set/viewpointVector -1 0 0
-#/vis/viewer/set/lightsVector -1 0 0
-#/vis/viewer/set/style wireframe
-#/vis/viewer/set/auxiliaryEdge true
-#/vis/viewer/set/lineSegmentsPerCircle 100
+/vis/viewer/set/viewpointVector -1 0 0
+/vis/viewer/set/lightsVector -1 0 0
+/vis/viewer/set/style wireframe
+/vis/viewer/set/auxiliaryEdge true
+/vis/viewer/set/lineSegmentsPerCircle 100
 
-#/vis/scene/add/trajectories smooth
-#/vis/scene/add/scale   # Simple scale line
-#/vis/scene/add/axes    # Simple axes: x=red, y=green, z=blue.
+/vis/scene/add/trajectories smooth
+/vis/scene/add/scale   # Simple scale line
+/vis/scene/add/axes    # Simple axes: x=red, y=green, z=blue.
 
 /det/converterRadius 37.5
 /det/converterLength 1500
@@ -28,10 +28,8 @@
 # guide away from source, 90 deg bend, tube below chopper blades
 # set the file of the starting spectrum
 /gun/spectrumfile spec.dat
-# tube above chopper blades, tube to detector
-/det/converterRadius 37.5
-/det/converterLength 1500
 
+# tube above chopper blades, tube to detector
 /mat/optpot1 183
 /mat/eta1 0.0001
 /mat/diff1 0.04
@@ -42,11 +40,11 @@
 # cube inside the converter. reduce by 18.5 because submerged in lHe
 /mat/optpot3 233.5
 /mat/eta3 0.00005
-/mat/diff3 0.04
+/mat/diff3 1.0
 #end plugs of converter, reduce by 18.5neV becuase submerged in lHe
 /mat/optpot4 233.5
 /mat/eta4 0.00005
-/mat/diff4 0.04
+/mat/diff4 1.0
 # Chopper plates
 /mat/optpot5 -49
 /mat/eta5 0.0
@@ -56,25 +54,38 @@
 /mat/excitedFrac 0.0
 /mat/meanDownShiftLifetime 0.000000000001
 /mat/E_recoil 0.0
+
+# Simulation Time Settings
+# Maximum age of neutron
 /mat/maxGlobalTime 30
+# Duration of uniform production 
+/gun/tA 30
+
+# Chopper
+# Set chopper function 
+/mat/chopperFile chopperfunction.dat
+
 #shutter plug geometry height
-/det/valveheight -200
+/det/valveheight -18
+
+# --- All geometry redefinitions must be above this line --- 
+/run/reinitializeGeometry
 # energy independent loss in helium
 /mat/helifetime 700
-# neutron life time
-/mat/nlifetime 880
+# neutron beta decay life time
+/mat/nlifetime 878
 
 # foil loss cross section0
-/mat/foil 0.000000000001
+/mat/foil 0.3
 # number of steps before particle is artificially killed
 /mat/numofsteps 10000000000
 # file name of output from materialboundaryprocess
-/mat/outputfile1 output.txt
+/mat/outputfile1 outputs/output.txt
 # use time steps to dump track information
-/mat/outputfile2 snapshot.txt
+/mat/outputfile2 outputs/snapshot.txt
 # set time for timesteps in milliseconds. (if set to zero or commented out, no output is generated)
-/mat/timesteps 0 # was 100
+/mat/timesteps 0 
 # set maximum step size for all source geometries (all the same)
-/det/stepsize 100
+/det/stepsize 1
 # how many particles are run
-/run/beamOn 10000
+/run/beamOn 2

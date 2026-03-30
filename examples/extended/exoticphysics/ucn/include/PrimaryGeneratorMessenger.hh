@@ -74,7 +74,9 @@ class PrimaryGeneratorMessenger: public G4UImessenger
     G4UIcmdWithAString* setEspecCmd;
     G4UIcmdWithAString* setAngspecCmd;
     G4UIcmdWithAString* setAngspeclogCmd;
-
+    // SBI v2 
+    G4UIcmdWithADouble* settACmd;
+    // End SBI v2
 
 };
 

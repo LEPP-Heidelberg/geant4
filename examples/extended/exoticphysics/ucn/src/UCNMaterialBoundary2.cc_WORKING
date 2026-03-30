@@ -15,11 +15,9 @@
 #define neV (1.0e-9*eV)
 #include <fstream>
 #include "G4SystemOfUnits.hh"
-#include "G4AnalysisManager.hh"
 
-G4bool isExcited = false;
+G4double remember_rand = 0;
 G4double chopper_t = 0;
-G4double chopper_smear = 0;
 G4double chopper_x = 0;
 G4double chopper_y = 0;
 G4double chopper_z = 0;
@@ -35,19 +33,17 @@ G4double excitedFrac = 0;
 G4double E_recoil = 0;
 G4double meanHeLifetime = 500.;
 G4double meanDownShiftLifetime = 0.000000000001;
-G4double meanLifetime = 880.; 
+G4double meanLifetime = 880.;
 G4double inside_he = 0;
 G4double foilabs = 0;
 G4double timesteps = 0;
 G4double stepsbeforekill = 100000000000;
 G4double maxGlobalTime = 0.0;
-G4double downShiftLifetime = 10000000000000.;
 G4double betadecaylifetime = 10000000000000.;
 G4double heliumlifetime = 10000000000000.;
 G4String outputfile1 = "default1.txt";
 G4String outputfile2 = "default2.txt";
 G4String outputfile3 = "default3.txt";
-G4double remember_random = 0;
 //std::ofstream myfile(outputfile2, std::ofstream::app);
 
 /**
@@ -110,7 +106,7 @@ void UCNShutterStates::SetLoop(int loop) {
 
 UCNMaterialBoundary2* UCNMaterialBoundary2::theInstance = 0;
 
-UCNMaterialBoundary2::UCNMaterialBoundary2(const G4String& processName, G4ProcessType type) // chopperFile added by Husain Manasawala on 30.03.2026 to enable reading in the opening function 
+UCNMaterialBoundary2::UCNMaterialBoundary2(const G4String& processName, G4ProcessType type)
          : G4VDiscreteProcess(processName, type)
 {
   theInstance = this;
@@ -124,19 +120,6 @@ UCNMaterialBoundary2::UCNMaterialBoundary2(const G4String& processName, G4Proces
  foil = 0;
 
  eta1 = 0; eta2 = 0; eta3 = 0; opt1 = 0; opt2 = 0; opt3 = 0; C = 0; V = 0; f_a = 0; f_h = 0; lambda = 0; Gamma1a = 0; Gamma1h = 0; Gamma2a = 0; Gamma2h = 0; Gamma3a = 0; Gamma3h = 0; u_min = 0; u_max = 0;
- 
- // Chopper Logic 
- // Set a default value and verify the file exists
- fChopperFile = "chopperfunction.dat";
- std::ifstream test("chopperfunction.dat");
- if (test.good()) {
-     LoadAndBuildCDF("chopperfunction.dat");
- } else {
-     G4cout << "[UCNMaterialBoundary2] No default chopperfunction.dat found, "
-            << "This is fine if set using /mat/chopperFile in macro" << G4endl;
- } 
- // End Chopper Logic
-
 
  // create a messenger for this class
   theMessenger = new UCNMaterialBoundary2Messenger(this);
@@ -147,144 +130,6 @@ UCNMaterialBoundary2::~UCNMaterialBoundary2(){
 
 delete theMessenger;
 } 
-
-
-// Chopper Logic 
-void UCNMaterialBoundary2::LoadAndBuildCDF(const G4String& filename)
-{
-    // ---- 1. Read two-column file (time_ms, voltage) ----
-    std::ifstream f(filename);
-    if (!f.is_open())
-        G4Exception("UCNMaterialBoundary2::LoadAndBuildCDF", "UCN001",
-                    FatalException, ("Cannot open chopper file: " + filename).c_str());
-
-    std::vector<G4double> t_ms, v_raw;
-    G4double t, v;
-    while (f >> t >> v) {
-        t_ms.push_back(t);
-        v_raw.push_back(v);
-    }
-    f.close();
-
-    const std::size_t N = t_ms.size();
-    if (N < 2)
-        G4Exception("UCNMaterialBoundaryProcess::LoadAndBuildCDF", "UCN002",
-                    FatalException, "Chopper file has fewer than 2 data points.");
-
-    // ---- 2. Shift voltage baseline to zero (mirrors np.maximum(v - min, 0)) ----
-    G4double v_min = *std::min_element(v_raw.begin(), v_raw.end());
-    std::vector<G4double> v_phys(N);
-    for (std::size_t i = 0; i < N; ++i)
-        v_phys[i] = std::max(v_raw[i] - v_min, 0.0);
-
-    // ---- 3. Centre of mass in ms, then convert to seconds ----
-    G4double wsum = 0.0, tsum = 0.0;
-    for (std::size_t i = 0; i < N; ++i) { wsum += v_phys[i]; tsum += t_ms[i] * v_phys[i]; }
-    G4double center_ms = tsum / wsum;
-
-    std::vector<G4double> t_ns(N);           // centered, in nanoseconds
-    for (std::size_t i = 0; i < N; ++i)
-        t_ns[i] = (t_ms[i] - center_ms) * ms;
-
-    // ---- 4. Build PDF via trapezoidal integral, then cumsum → CDF ----
-    //  trapz integral
-    G4double integral = 0.0;
-    for (std::size_t i = 1; i < N; ++i)
-        integral += 0.5 * (v_phys[i] + v_phys[i-1]) * (t_ns[i] - t_ns[i-1]);
-
-    std::vector<G4double> pdf(N);
-    for (std::size_t i = 0; i < N; ++i)
-        pdf[i] = v_phys[i] / integral;
-
-    //  cumulative sum of pdf * dt  (trapezoidal, so it matches np.cumsum on the pdf array)
-    fCDF_values.resize(N);
-    fCDF_times .resize(N);
-    fCDF_values[0] = 0.0;
-    for (std::size_t i = 1; i < N; ++i)
-        fCDF_values[i] = fCDF_values[i-1]
-                         + 0.5 * (pdf[i] + pdf[i-1]) * (t_ns[i] - t_ns[i-1]);
-
-    // ---- 5. Normalise CDF to [0,1] exactly and store matching times ----
-    G4double cdf_max = fCDF_values.back();
-    for (std::size_t i = 0; i < N; ++i) {
-        fCDF_values[i] /= cdf_max;
-        fCDF_times [i]  = t_ns[i];
-    }
-
-    G4cout << "[UCNMaterialBoundaryProcess] Chopper CDF built from "
-	   << fChopperFile << ", containing " 
-           << N << " points. t range: ["
-           << fCDF_times.front() << ", " << fCDF_times.back()
-           << "] s  (centred on 0)" << G4endl;
-
-        /* // Debugging
-        #include <fstream>
-
-	// Draw 100,000 samples and bin them manually
-	const int NBINS = 100;
-	const int NSAMPLES = 100000;
-	std::vector<int> counts(NBINS, 0);
-	G4double t_min = fCDF_times.front();
-	G4double t_max = fCDF_times.back();
-	G4double bin_width = (t_max - t_min) / NBINS;
-
-	G4cout << "[DEBUG] First 5 CDF values: " << G4endl;
-	for(int i = 0; i < 5; ++i)
-	    G4cout << "  t=" << fCDF_times[i] << "  cdf=" << fCDF_values[i] << G4endl;
-	G4cout << "[DEBUG] Last 5 CDF values: " << G4endl;
-	for(int i = fCDF_values.size()-5; i < (int)fCDF_values.size(); ++i)
-	    G4cout << "  t=" << fCDF_times[i] << "  cdf=" << fCDF_values[i] << G4endl;
-
-	G4cout << "[DEBUG] 10 raw SampleJitter() calls:" << G4endl;
-	for(int i = 0; i < 10; ++i)
-	    G4cout << "  " << SampleSmear() << G4endl;
-
-	for (int i = 0; i < NSAMPLES; ++i) {
-	    G4double t = SampleSmear();
-	    int bin = (int)((t - t_min) / bin_width);
-	    if (bin >= 0 && bin < NBINS) counts[bin]++;
-	}
-
-	std::ofstream out("jitter_check.csv");
-	out << "time_s,count\n";
-	for (int i = 0; i < NBINS; ++i) {
-	    G4double bin_centre = t_min + (i + 0.5) * bin_width;
-	    out << bin_centre << "," << counts[i] << "\n";
-	}
-	out.close();
-	G4cout << "[UCNMaterialBoundary2] Wrote jitter_check.csv" << G4endl; */ 
-}
-
-G4double UCNMaterialBoundary2::SampleSmear() const
-{
-    if (fCDF_values.empty()) {
-        G4Exception("UCNMaterialBoundary2::SampleSmear", "UCN003",
-        FatalException, "Chopper file not loaded — use /mat/chopperFile in mac");
-        }
-    	
-    // Draw a uniform random number in [0,1) using GEANT4's engine
-    G4double u = G4UniformRand();
-
-    // Binary search for the bracket in the CDF (fCDF_values is sorted ascending)
-    auto it = std::lower_bound(fCDF_values.begin(), fCDF_values.end(), u);
-
-    // Handle edge cases
-    if (it == fCDF_values.begin()) return fCDF_times.front();
-    if (it == fCDF_values.end())   return fCDF_times.back();
-
-    std::size_t hi = std::distance(fCDF_values.begin(), it);
-    std::size_t lo = hi - 1;
-
-    // Linear interpolation (inverse CDF)
-    G4double cdf_lo = fCDF_values[lo], cdf_hi = fCDF_values[hi];
-    G4double t_lo   = fCDF_times [lo], t_hi   = fCDF_times [hi];
-
-    G4double frac = (u - cdf_lo) / (cdf_hi - cdf_lo);
-    return t_lo + frac * (t_hi - t_lo);   // result in seconds
-}
-// End Chopper Logic 
-
-
 
 G4VParticleChange* UCNMaterialBoundary2::PostStepDoIt(const G4Track& aTrack, 
 const G4Step& aStep)
@@ -298,7 +143,6 @@ chopper_px = 0;
 chopper_py = 0;
 chopper_pz = 0;
 chopper_t = 0;
-chopper_smear = 0;
 foilct = 0;
 justprinted = 0;
 num++;
@@ -362,7 +206,7 @@ G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
   std::ofstream myfile(outputfile1, std::ofstream::app);
   myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<
                   aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() << " " <<
-                  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "10000" << std::endl;
+                  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "10000" << std::endl;
 
 }
 */
@@ -376,7 +220,7 @@ if (aTrack.GetCurrentStepNumber() == stepsbeforekill) {
 G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
   G4StepPoint* pPostStepPoint = aStep.GetPostStepPoint();
 
- G4cout << "Reached maximum number of steps " << aTrack.GetCurrentStepNumber() << ", time "
+ G4cout << "reached number of steps " << aTrack.GetCurrentStepNumber() << ", time "
 	 << aTrack.GetGlobalTime()  << G4endl;
   aParticleChange.Initialize(aTrack);
  aParticleChange.ProposeTrackStatus(fStopAndKill);
@@ -387,18 +231,17 @@ G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
 
 
 if (aTrack.GetGlobalTime()*1e-9 > maxGlobalTime) {
-
 G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
   G4StepPoint* pPostStepPoint = aStep.GetPostStepPoint();
 
- G4cout << "Reached defined max age: " << maxGlobalTime << "s, at Step Number: " << aTrack.GetCurrentStepNumber() << ", global time "
-         << aTrack.GetGlobalTime() *1e-9 << "s" <<G4endl;
+ G4cout << "reached defined max age" << aTrack.GetCurrentStepNumber() << ", time "
+         << aTrack.GetGlobalTime() *1e-9 << G4endl;
   aParticleChange.Initialize(aTrack);
  
       std::ofstream myfile(outputfile1, std::ofstream::app);
           myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<
                   aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() << " " <<
-                  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "13000" << std::endl;
+                  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "13000" << std::endl;
 
   
   
@@ -411,13 +254,6 @@ G4StepPoint* pPreStepPoint  = aStep.GetPreStepPoint();
 // neutron life-time
 if (aTrack.GetCurrentStepNumber() == 1) {
 betadecaylifetime = -std::log(1.0 - G4UniformRand()) * meanLifetime;
-isExcited = false; 
-}
-
-// excited_state
-if ((aTrack.GetCurrentStepNumber() == 1) && (G4UniformRand() < excitedFrac) ) {
-downShiftLifetime = -std::log(1.0 - G4UniformRand()) * meanDownShiftLifetime;
-isExcited = true;
 }
 
 // energy independent loss time inside helium
@@ -473,7 +309,7 @@ if (usehe == 1){
     //G4cout << "tfakt " << tfakt << G4endl;
     G4double velnorm = vel * tfakt;
     //G4cout << "velnorm " << velnorm << G4endl;
-    G4double enormal = vel*vel/2.* 1.6749e-27; // 1.6749e-27; CLHEP::neutron_mass_c2/neV;
+    G4double enormal = vel*vel/2.* 1.6749e-27; // CLHEP::neutron_mass_c2/neV;
     // 18.5 nano electron volts (n eV) is equal to 2.9637 x 10^-27 joules.
     G4double enormal_new = enormal + 2.9639e-27; // joules
     //G4cout << "enormal " << enormal  * 6.242e27 << G4endl;
@@ -602,7 +438,7 @@ G4cout << "Killed pp foil" << foiltrans << ", rnd=  " << counted << G4endl;
 	std::ofstream myfile(outputfile1, std::ofstream::app);
           myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<
                   aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() << " " <<
-                  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "1000" << std::endl;
+                  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "1000" << std::endl;
 
   aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
  return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
@@ -620,7 +456,7 @@ G4cout << "Falling down" << G4endl;
               std::ofstream myfile(outputfile1, std::ofstream::app);
           myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " << 
                   aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() << " " <<
-                  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "15000" << std::endl;
+                  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "15000" << std::endl;
 
              
       
@@ -644,7 +480,6 @@ if (  pPreStepPoint->GetPosition().getX() > 150 ){
                 if ( st == 0 ){
 
  chopper_t =  aTrack.GetGlobalTime() ;
- chopper_smear = SampleSmear();
  chopper_x =  pPreStepPoint->GetPosition().getX() ;
  chopper_y =  pPreStepPoint->GetPosition().getY() ;
  chopper_z =  pPreStepPoint->GetPosition().getZ() ;
@@ -674,14 +509,13 @@ if (  pPreStepPoint->GetPosition().getX() > 150 ){
   G4Material* Material2 = pPostStepPoint->GetPhysicalVolume()->GetLogicalVolume()->GetMaterial();
  
   
-//if ( aTrack.GetGlobalTime()*1e-9 > betadecaylifetime){
-if ( (aTrack.GetGlobalTime() * 1e-9 > betadecaylifetime) && (isExcited == false)){ 
-//G4cout << "beta decay " << G4endl;
+if ( aTrack.GetGlobalTime()*1e-9 > betadecaylifetime){
+	//G4cout << "beta decay " << G4endl;
 
 std::ofstream myfile(outputfile1, std::ofstream::app);
 G4cout << "beta decay " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
 
-myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "11000" << std::endl;
+myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "11000" << std::endl;
 
 aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
 return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
@@ -689,98 +523,13 @@ return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
 
 }
 
-//downshift stuff
-if ( (aTrack.GetGlobalTime()*1e-9 > downShiftLifetime) && (isExcited == true) && (Material1 != Material2)){
-	// Remove excited state glag 
-	isExcited = false;
-
-	// Reset the beta decay life clock to begin at de-excitation
-       	betadecaylifetime += aTrack.GetGlobalTime()*1e-9;	
-	
-	//Add momentum stuff here
-	G4double NeutronMass = G4Neutron::Neutron()->GetPDGMass();
-	G4double Energy = aTrack.GetKineticEnergy();
-	G4ThreeVector Momentum = aTrack.GetMomentum();
-	G4double PhotonEnergy = E_recoil*eV; // This should be in a macro, 5eV -> 13.29neV
-
-	//Recoil Energy
-	G4double RecoilEnergy = (PhotonEnergy * PhotonEnergy) / (2.0 * NeutronMass); // This should be the energy imparted to the neutron
-	//NewEnergy = Energy + RecoilEnergy; // I think this is wrong -- Husain 
-
-	//Momentum Direction sampling math using random variables x1 x2, should be uniformly sampled in 3D space
-	G4double x1 = G4UniformRand();
-	G4double x2 = G4UniformRand(); 
-
-	G4double cosTheta = 1.0 - 2.0 * x1;
-	G4double sinTheta = std::sqrt(1.0 - cosTheta * cosTheta);
-	G4double phi = CLHEP::twopi * x2;
-
-	// Create the momentum vector in xyz from the random sampling (with length of RecoilEnergy, RecoilMomentum's magnitude is same as PhotonEnergy
-	G4double px = PhotonEnergy * std::cos(phi) * sinTheta;
-	G4double py = PhotonEnergy * std::sin(phi) * sinTheta;
-	G4double pz = PhotonEnergy * cosTheta;
-	G4ThreeVector RecoilMomentum = G4ThreeVector(px,py,pz);
-
-	G4cout << "The recoil momentum magnitude: " << RecoilMomentum.mag() << G4endl;
-	G4cout << "The recoil momentum direction: " << RecoilMomentum << G4endl;
-	G4cout << "The initial momentum direction: " << Momentum << G4endl;
-	// Calculate recoiled momentum
-	G4ThreeVector NewMomentum = Momentum - RecoilMomentum;
-	G4cout << "The new momentum direction: " << NewMomentum << G4endl;
-
-	// Normalize NewMomentum, then attach new energy and momentum to tracking
-	G4double NewEnergy = NewMomentum.mag2() / (2.0 * NeutronMass);
-	G4ThreeVector NewMomentum_full = NewMomentum; // This is a copy for diagnostics
-	NewMomentum /= NewMomentum.mag();
-	
-	// Record initial state for diagnostics
-	const G4double E_before = aTrack.GetKineticEnergy();
-	const G4ThreeVector p_before = aTrack.GetMomentum();
-	const G4ThreeVector dir_before = aTrack.GetMomentumDirection();
-
-	// Now Propose the new calculated unit vector momentum and kinetic energy to the track	
-	aParticleChange.Initialize(aTrack);
-	aParticleChange.ProposeMomentumDirection(NewMomentum);
-	aParticleChange.ProposeEnergy(NewEnergy);
-	
-	// Calculate changes
-	const G4double p_before_mag = p_before.mag();
-	const G4double p_after_mag  = NewMomentum_full.mag();
-	const G4double E_recoil_expected = (PhotonEnergy * PhotonEnergy) / (2.0 * NeutronMass);
-	
-	// Print diagnostic information and return
-	G4cout
-  	<< "\n[Downshift recoil applied]\n"
-  	<< "  Time                : " << aTrack.GetGlobalTime()/ns << " ns\n"
-  	<< "  Photon energy       : " << PhotonEnergy/eV << " eV\n"
-  	<< "  Expected recoil E   : " << E_recoil_expected/neV << " neV\n"
-  	<< "\n"
-  	<< "  Kinetic energy (before) : " << E_before/neV << " neV\n"
-  	<< "  Kinetic energy (after)  : " <<  NewEnergy/neV << " neV\n"
-  	<< "  Delta E                 : " << (NewEnergy - E_before)/neV << " neV\n"
-  	<< "\n"
-  	<< "  |p| before : " << p_before_mag/(eV) << " eV\n"
-  	<< "  |p| after  : " << p_after_mag/(eV)  << " eV\n"
-  	<< "\n"
-  	<< "  Direction before : " << dir_before << "\n"
-  	<< "  Direction after  : " << NewMomentum << "\n"
-  	<< G4endl;
-	
-	//G4cout
-        //<< "\n[Downshift recoil applied**************************]\n" << G4endl;
-	//return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
-	//return &aParticleChange;
-}
-
-
-
 if ( aTrack.GetGlobalTime()*1e-9 > heliumlifetime){
         //G4cout << "helium loss " << G4endl;
 
 std::ofstream myfile(outputfile1, std::ofstream::app);
 G4cout << "Lost in helium " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
 
-myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "12000" << std::endl;
+myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "12000" << std::endl;
 
 aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
 return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
@@ -837,7 +586,7 @@ G4double counted0 = G4UniformRand();
 if (counted0 > foiltrans){ 
 
 std::ofstream myfile(outputfile1, std::ofstream::app);
-myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "8000" << std::endl;
+myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "8000" << std::endl;
 
    aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
  return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
@@ -857,7 +606,7 @@ if (counted < beff){
 	std::ofstream myfile(outputfile1, std::ofstream::app);
 	  myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  
 		  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() << " " <<  
-		  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "6000" << std::endl;
+		  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "6000" << std::endl;
 
 chopper_x = 0;
 chopper_y = 0;
@@ -870,7 +619,7 @@ ezero = 0;
 }
 else {
 std::ofstream myfile(outputfile1, std::ofstream::app);
-	myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "7000" << std::endl;
+	myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "7000" << std::endl;
 }
 	  aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
  return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
@@ -879,7 +628,7 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
 /*
   if ( Material2->GetName() == "Detector1"){
 	  myfile1 << aTrack.GetKineticEnergy()/neV << aTrack.GetMomentumDirection() << pPreStepPoint->GetPosition()   <<  aTrack.GetGlobalTime() << aTrack.GetPolarization() << std::endl;
-	
+	  aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
  return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
   }
   if ( Material2->GetName() == "Detector2"){
@@ -1015,22 +764,19 @@ if (Material1 == Material2)  return G4VDiscreteProcess::PostStepDoIt(aTrack, aSt
    G4double R_sq = (part1)/(part2);
    G4double reflection = R_sq;
    // until here
-   //G4cout << "Just reflected: " << just_reflected << "\nStep number: " << aTrack.GetCurrentStepNumber() << "\nP(up scatter): " << pupscatter << "\nFermipot: " << fermipot <<  "\nReflection: " << reflection << "\n\n" << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << "\n\n" << G4endl;  
 
-// if (true): All particle hit the wall once and die
-// if (rnd1 > reflection && just_reflected == 0): Particle is stuck (possible geom overlap)
-//
+
 
   if (comparepot(enormal, fermipot_diff) == 0){             // below critical velocity
       /////// losses
       G4double rnd1 = G4UniformRand();
-      remember_random = rnd1;
+      remember_rand = rnd1;
 //G4cout << " below crit, ref = " << reflection << " rnd " << rnd1 << G4endl;
 
       if (rnd1 > reflection){             // loss on reflection
 		G4cout << " loss!" << G4endl;
         std::ofstream myfile(outputfile1, std::ofstream::app);
-        myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "5000" << std::endl;
+        myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "5000" << std::endl;
         // kill it.
         aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
         return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
@@ -1039,31 +785,29 @@ if (Material1 == Material2)  return G4VDiscreteProcess::PostStepDoIt(aTrack, aSt
       ///
 
           //    G4cout << "reflect it! " << G4endl;
+
       G4ThreeVector ref = reflect(0, pdiffus, momdir, theGlobalNormal);
       ref = ref.unit();
       aParticleChange.ProposeMomentumDirection(ref);
       just_reflected = 1;
   }
   else {                                      // transmit material
-	  
-	  if (just_reflected == 0){
-          G4double rnd2 = G4UniformRand();
-	  if (remember_random){ rnd2 = remember_random; remember_random = 0; }
+       if (just_reflected == 0){
+	  G4double rnd2 = G4UniformRand();
+          if (remember_rand){ rnd2 = remember_rand; remember_rand = 0; }
           if (rnd2 <  reflection){
-            //G4cout << "above v_c reflect " << G4endl;
+            G4cout << "above v_c reflect " << G4endl;
                 ////// reflect it
           G4ThreeVector ref = reflect(0, pdiffus, momdir, theGlobalNormal);
-          aParticleChange.ProposeMomentumDirection(ref.unit());
+          aParticleChange.ProposeMomentumDirection(ref);
           just_reflected = 1;
           } 
-	  
-
         /*
 	  else {
 
 		G4cout << "KILL WHEN ENTERING CHOPPER BLADES!!!! " << G4endl;
 std::ofstream myfile(outputfile1, std::ofstream::app);
-        myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "17000" << std::endl;
+        myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "17000" << std::endl;
         // kill it.
         aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
         return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
@@ -1076,18 +820,9 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
 
 
                 //if (reflection < 0.000000001) return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
-	
-         // If NOT in chopper, this must be commented out for vTOF!
-	 
-         /*// SANITY CHECK --------------------------------------------------- 
-	 std::ofstream myfile(outputfile1, std::ofstream::app);   
-	 myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "5000" << std::endl;
-          // kill it.
-          aParticleChange.ProposeTrackStatus( fStopAndKill ) ;
-          return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
-          // END SANITY CHECK ----------------------------------------------- 
-	*/
-        if ( fermipot < 0  ){ // Comment out this if block for sanity checks.
+
+
+        if ( fermipot < 0  ){
 
 
 
@@ -1095,27 +830,24 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
 
                 G4cout << "KILL WHEN ENTERING CHOPPER BLADES!!!! " << G4endl;
 std::ofstream myfile(outputfile1, std::ofstream::app);
-   //return &aParticleChange;    
-   myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "17000" << std::endl;
+        myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "17000" << std::endl;
         // kill it.
         aParticleChange.ProposeTrackStatus( fStopAndKill ) ;                                                                                 return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);                                                                      
-          }
-
-	    
-          G4cout << "above vc transmit" << G4endl; 
+          }	  
+          //G4cout << "above vc transmi" << G4endl; 
           // --- transmission because it is faster than the critical velocity
           G4double enew = transmit(fermipot_diff, energy);
           G4double m = -sqrt(momnorm*momnorm - CLHEP::neutron_mass_c2*2.*fermipot_diff*neV);
           G4ThreeVector ref = mom - (momnorm-m)*theGlobalNormal;
           aParticleChange.ProposeMomentumDirection(ref.unit());
-          aParticleChange.ProposeEnergy(enew*neV); 
-	  
+          aParticleChange.ProposeEnergy(enew*neV);
          }    
        }
        else if (just_reflected == 1){
         just_reflected = 0 ;
       }
-  }   
+  }  
+
 
 
 // this is the approximated reflection probability as it was used in the past
@@ -1128,7 +860,7 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
       if (loss(pupscatter, velnorm, fermipot_diff) == 1){             // loss on reflection
 	if (verboselevel >1) G4cout << "MATERIALBOUNDARY: loss on surface " << G4endl;
 std::ofstream myfile("detector.txt", std::ofstream::app);
-myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "5000" << std::endl;
+myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "5000" << std::endl;
 
 
 
@@ -1414,7 +1146,7 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
   myfile << "# 16000: Undefined"<<std::endl;
   myfile << "# 17000: Killed in chopper blades"<<std::endl;
   myfile << "# -------------------------------------------------------------------------------------------"<<std::endl;
-  myfile << "# KE[neV] px[unitless] py[unitless] pz[unitless] x[mm] y[mm] z[mm] t_global[ns] t_chopper_smeared[ns] t_chopper_raw[ns] x_chopper[mm] n_foil z_chopper[mm] px_chopper[unitless] py_chopper[unitless] Exit Code" << std::endl;
+  myfile << "# KE[neV] px[unitless] py[unitless] pz[unitless] x[mm] y[mm] z[mm] t_global[s] t_chopper[s] x_chopper[mm] n_foil z_chopper[mm] px_chopper[unitless] py_chopper[unitless] Exit Code" << std::endl;
 //G4cout << "MaterialBoundary2: set outputfile1 " << fil << G4endl;
 }
 
@@ -1478,13 +1210,13 @@ void UCNMaterialBoundary2::SetC(G4double fil){C = fil;}
 void UCNMaterialBoundary2::SetV(G4double fil){V = fil;}
 void UCNMaterialBoundary2::Setf_a(G4double fil){f_a = fil;}
 void UCNMaterialBoundary2::Setf_h(G4double fil){f_h = fil;}
+
 // Excited States
 void UCNMaterialBoundary2::SetexcitedFrac(G4double fil){excitedFrac = fil;}
 void UCNMaterialBoundary2::SetmeanDownShiftLifetime(G4double fil){meanDownShiftLifetime = fil;}
 void UCNMaterialBoundary2::SetE_recoil(G4double fil){E_recoil = fil;}
 void UCNMaterialBoundary2::SetmaxGlobalTime(G4double fil){maxGlobalTime = fil;}
 // End Excited States
-
 
 // replace Gamma1a e.g. with meanHeLifetime
 // replace Gamma2a e.g. with meanLifetime
@@ -1497,4 +1229,5 @@ void UCNMaterialBoundary2::SetGamma3h(G4double fil){Gamma3h = fil;}
 void UCNMaterialBoundary2::Setlambda(G4double fil){lambda = fil;}
 void UCNMaterialBoundary2::Setu_min(G4double fil){u_min = fil;}
 void UCNMaterialBoundary2::Setu_max(G4double fil){u_max = fil;}
+
 

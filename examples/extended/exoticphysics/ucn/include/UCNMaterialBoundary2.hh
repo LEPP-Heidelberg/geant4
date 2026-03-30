@@ -48,6 +48,18 @@ class UCNMaterialBoundary2 : public G4VDiscreteProcess
 {
 
 private:
+	// Read Chopper Function for vTOF 
+	// --- Jitter PDF sampler (built once in constructor) ---
+    	void LoadAndBuildCDF(const G4String& filename);
+        G4double SampleSmear() const;
+	
+	G4String fChopperFile;                  // set by mac command
+	std::vector<G4double> fCDF_times;   // centered times in seconds (x-axis of inverse CDF)
+	std::vector<G4double> fCDF_values;  // CDF values in [0,1]  (y-axis, used to look up)
+	// Stored inverted: fCDF_values[i] -> fCDF_times[i]
+	// so sampling = find where uniform random falls in fCDF_values, interpolate fCDF_times
+	// End Chopper Logic
+
 
 public: 
 
@@ -144,9 +156,16 @@ public:
   void SetE_recoil(G4double fil);
   void SetmaxGlobalTime(G4double fil);
 // End Sxcited States
-int read_two_column_file(const char* filename, double x[], double y[], std::size_t maxSize);
-G4double Chopperfunc(G4String fnam, G4double t) ;
-void SetChopperFunction(G4String fil);
+//int read_two_column_file(const char* filename, double x[], double y[], std::size_t maxSize);
+//G4double Chopperfunc(G4String fnam, G4double t) ;
+//void SetChopperFunction(G4String fil); // redone below as inline function on 30.03.2026 
+// Called by the messenger when /mat/chopperFile is parsed
+void SetChopperFunction(const G4String& filename) { 
+        fChopperFile = filename; 
+        LoadAndBuildCDF(filename);  // builds the CDF right then
+    }
+G4String GetChopperFile() const { return fChopperFile; }
+
 
 private:
 	UCNShutterStates shutter_states[UCN_SHUTTERS_MAX];
