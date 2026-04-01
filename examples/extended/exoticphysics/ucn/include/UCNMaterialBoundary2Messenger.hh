@@ -91,17 +91,28 @@ class UCNMaterialBoundary2Messenger: public G4UImessenger
          G4UIcmdWithADouble* setDiff3Cmd;
          G4UIcmdWithADouble* setDiff4Cmd;
          G4UIcmdWithADouble* setDiff5Cmd;
-          G4UIcmdWithADouble* setOpt1Cmd;
+
+         G4UIcmdWithADouble* setDiff6Cmd;
+	 
+	 G4UIcmdWithADouble* setOpt1Cmd;
          G4UIcmdWithADouble* setOpt2Cmd;
          G4UIcmdWithADouble* setOpt3Cmd;
          G4UIcmdWithADouble* setOpt4Cmd;
          G4UIcmdWithADouble* setOpt5Cmd;
+
+
+         G4UIcmdWithADouble* setOpt6Cmd;
+
          G4UIcmdWithADouble* setEta1Cmd;
          G4UIcmdWithADouble* setEta2Cmd;
          G4UIcmdWithADouble* setEta3Cmd;
          G4UIcmdWithADouble* setEta4Cmd;
          G4UIcmdWithADouble* setEta5Cmd;
-          G4UIcmdWithADouble* setCCmd;
+
+
+         G4UIcmdWithADouble* setEta6Cmd;
+
+	 G4UIcmdWithADouble* setCCmd;
          G4UIcmdWithADouble* setVCmd;
          G4UIcmdWithADouble* setf_aCmd;
          G4UIcmdWithADouble* setf_hCmd;

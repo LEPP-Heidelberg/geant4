@@ -85,6 +85,7 @@ class ExUCNDetectorConstruction : public G4VUserDetectorConstruction
     G4Material* GuideMaterial4;
     G4Material* GuideMaterial5;
 
+    G4Material* FrameMaterial;
     // SBI v2
     // To pass the Converter Properties to the Gun`
     G4double fConverterRadius;

@@ -123,7 +123,7 @@ UCNMaterialBoundary2::UCNMaterialBoundary2(const G4String& processName, G4Proces
  useshutters = 0;
  foil = 0;
 
- eta1 = 0; eta2 = 0; eta3 = 0; opt1 = 0; opt2 = 0; opt3 = 0; C = 0; V = 0; f_a = 0; f_h = 0; lambda = 0; Gamma1a = 0; Gamma1h = 0; Gamma2a = 0; Gamma2h = 0; Gamma3a = 0; Gamma3h = 0; u_min = 0; u_max = 0;
+ eta1 = 0; eta2 = 0; eta3 = 0; opt1 = 0; opt2 = 0; opt3 = 0; C = 0; V = 0; f_a = 0; f_h = 0; lambda = 0; Gamma1a = 0; Gamma1h = 0; Gamma2a = 0; Gamma2h = 0; Gamma3a = 0; Gamma3h = 0; u_min = 0; u_max = 0; opt6 = 0; eta6 = 0;
  
  // Chopper Logic 
  // Set a default value and verify the file exists
@@ -563,15 +563,15 @@ int usefoil = 0;
 ///*
 // passage through the vacuum separation foil
 
-if ( pPreStepPoint->GetPosition().getX() > 150 ){
-         if (foil < 150){
+if ( pPreStepPoint->GetPosition().getX() > 250 ){
+         if (foil < 250){
 //		 G4cout << "through foil outward" << G4endl;
 		 foil = 10000; // pPreStepPoint->GetPosition().getX();
 usefoil = 1;
 	 }
 }
 else{
-if (foil > 150){
+if (foil >250){
   //       G4cout << "thoguht foil inward " << G4endl;
          foil = 0;
 usefoil = 1;
@@ -978,6 +978,14 @@ if (Material1 == Material2)  return G4VDiscreteProcess::PostStepDoIt(aTrack, aSt
       if (tab == 3) {fermipot = opt3; pupscatter = eta3; pdiffus = diff3;}
       if (tab == 4) {fermipot = opt4; pupscatter = eta4; pdiffus = diff4;}
       if (tab == 5) {fermipot = opt5; pupscatter = eta5; pdiffus = diff5;}
+
+      if (tab == 6) {fermipot = opt6; pupscatter = eta6; pdiffus = diff6;
+       G4cout << "*** UCNMaterialBoundary2: using tab==6 (foil)" << G4endl;
+
+      }
+      
+      
+
     }
   G4MaterialPropertiesTable* aMaterialPropertiesTabl2;
   aMaterialPropertiesTabl2 = Material1->GetMaterialPropertiesTable();
@@ -992,6 +1000,21 @@ if (Material1 == Material2)  return G4VDiscreteProcess::PostStepDoIt(aTrack, aSt
       if (tab == 3) {fermipot_previous = opt3; pupscatter_previous = eta3; pdiffus_previous = diff3;}
       if (tab == 4) {fermipot_previous = opt4; pupscatter_previous = eta4; pdiffus_previous = diff4;}
       if (tab == 5) {fermipot_previous = opt5; pupscatter_previous = eta5; pdiffus_previous = diff5;}
+ 
+      if (tab == 6) {fermipot_previous = opt6; pupscatter_previous = eta6; pdiffus_previous = diff6;
+ G4cout << "*** UCNMaterialBoundary2: using tab==6 (foil)" << G4endl;
+
+	     
+	      /*     static G4int printCount = 0;
+    if (printCount < 1) {
+        G4cout << "*** UCNMaterialBoundary2: using tab==6 (foil)" << G4endl;
+        G4cout << "    opt6  = " << opt6  << G4endl;
+        G4cout << "    eta6  = " << eta6  << G4endl;
+        G4cout << "    diff6 = " << diff6 << G4endl;
+        printCount++;
+    }*/
+      
+      }
  }
 
 
@@ -1474,6 +1497,13 @@ void UCNMaterialBoundary2::SetDiff2(G4double fil){diff2 = fil;}
 void UCNMaterialBoundary2::SetDiff3(G4double fil){diff3 = fil;}
 void UCNMaterialBoundary2::SetDiff4(G4double fil){diff4 = fil;}
 void UCNMaterialBoundary2::SetDiff5(G4double fil){diff5 = fil;}
+
+void UCNMaterialBoundary2::SetDiff6(G4double val) { diff6 = val; }
+void UCNMaterialBoundary2::SetOpt6(G4double val)  { opt6  = val; }
+void UCNMaterialBoundary2::SetEta6(G4double val)  { eta6  = val; }
+
+
+
 void UCNMaterialBoundary2::SetC(G4double fil){C = fil;}
 void UCNMaterialBoundary2::SetV(G4double fil){V = fil;}
 void UCNMaterialBoundary2::Setf_a(G4double fil){f_a = fil;}

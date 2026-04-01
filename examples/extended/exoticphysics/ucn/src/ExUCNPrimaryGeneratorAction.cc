@@ -104,9 +104,10 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
    G4ThreeVector xaxis(1,0,0);
    G4ThreeVector yaxis(0,1,0);
 
-   G4double x1 = G4UniformRand()*72.-R;
-   G4double z1  = G4UniformRand()*72.-R;
-   G4double radius1 = sqrt(x1*x1+z1*z1);
+
+  G4double x1 = G4UniformRand()*72.-R;
+  G4double z1  = G4UniformRand()*72.-R;
+     G4double radius1 = sqrt(x1*x1+z1*z1);
    while (radius1 > R)
    {
     x1 = G4UniformRand()*72.-R;
@@ -115,6 +116,7 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
    }
 
    G4double longi = G4UniformRand()*(L-10.);
+   
    G4ThreeVector gunPositionShift(x1 - 270 - 80 , z1- 286., -L + longi);
    G4double offset = 0;
    G4double particleEnergy = (Espec(Especfile)+offset) * 1e-9*eV;
@@ -150,9 +152,9 @@ std::ofstream myfile("start.txt", std::ofstream::app);
 
     G4double mradius = sqrt(mx*mx +my*my+mz*mz);
     while (mradius > 1){
-      mx = 2 * G4UniformRand()-1;
-      my = 2 * G4UniformRand()-1;
-      mz = 2 * G4UniformRand()-1;
+      mx = 2.*G4UniformRand() -1.;
+      my = 2.*G4UniformRand() -1.;
+      mz = 2.*G4UniformRand() -1.;
       mradius = sqrt(mx*mx +my*my+mz*mz);
     } 
     G4ThreeVector startmom(mx,my,mz);

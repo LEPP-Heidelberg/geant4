@@ -111,6 +111,11 @@ setOpt5Cmd = new G4UIcmdWithADouble("/mat/optpot5",this);
   setOpt5Cmd->SetParameterName("optpot5",true);
   setOpt5Cmd->SetDefaultValue(1) ;
 
+setOpt6Cmd = new G4UIcmdWithADouble("/mat/optpot6",this);
+  setOpt6Cmd->SetParameterName("optpot6",true);
+  setOpt6Cmd->SetDefaultValue(1) ;
+
+
 
   // eta1, eta2, eta3
   setEta1Cmd = new G4UIcmdWithADouble("/mat/eta1",this);
@@ -129,6 +134,12 @@ setEta5Cmd = new G4UIcmdWithADouble("/mat/eta5",this);
   setEta5Cmd->SetParameterName("eta5",true);
   setEta5Cmd->SetDefaultValue(1) ;
 
+
+setEta6Cmd = new G4UIcmdWithADouble("/mat/eta6",this);
+  setEta6Cmd->SetParameterName("eta6",true);
+  setEta6Cmd->SetDefaultValue(1) ;
+
+
   // diffuse scattering diff1, diff2 ...
 setDiff1Cmd = new G4UIcmdWithADouble("/mat/diff1",this);
   setDiff1Cmd->SetParameterName("diff1",true);
@@ -146,6 +157,9 @@ setDiff5Cmd = new G4UIcmdWithADouble("/mat/diff5",this);
   setDiff5Cmd->SetParameterName("diff5",true);
   setDiff5Cmd->SetDefaultValue(1) ;
   
+setDiff6Cmd = new G4UIcmdWithADouble("/mat/diff6",this);
+  setDiff6Cmd->SetParameterName("diff6",true);
+  setDiff6Cmd->SetDefaultValue(1) ;
   
   // theory parameters C,V, u_0, u_min, u_max, lambda, f_a, Gamma_1a, f_h, Gamma1h, Gamma2a, Gamma3a, Gamma4a, Gamma2h,Gamma3h, Gamma4h
 
@@ -321,16 +335,23 @@ if( command == setDiff3Cmd)  {      fAction->SetDiff3(setDiff3Cmd->GetNewDoubleV
 if( command == setDiff4Cmd)  {      fAction->SetDiff4(setDiff4Cmd->GetNewDoubleValue(newValue));}
 if( command == setDiff5Cmd)  {      fAction->SetDiff5(setDiff5Cmd->GetNewDoubleValue(newValue));}
 
+if( command == setDiff6Cmd)  {      fAction->SetDiff6(setDiff6Cmd->GetNewDoubleValue(newValue));}
+
 if( command == setOpt1Cmd)  {      fAction->SetOpt1(setOpt1Cmd->GetNewDoubleValue(newValue));}
 if( command == setOpt2Cmd)  {      fAction->SetOpt2(setOpt2Cmd->GetNewDoubleValue(newValue));}
 if( command == setOpt3Cmd)  {      fAction->SetOpt3(setOpt3Cmd->GetNewDoubleValue(newValue));}
 if( command == setOpt4Cmd)  {      fAction->SetOpt4(setOpt4Cmd->GetNewDoubleValue(newValue));}
 if( command == setOpt5Cmd)  {      fAction->SetOpt5(setOpt5Cmd->GetNewDoubleValue(newValue));}
+if( command == setOpt6Cmd)  {      fAction->SetOpt6(setOpt6Cmd->GetNewDoubleValue(newValue));}
+
 if( command == setEta1Cmd)  {      fAction->SetEta1(setEta1Cmd->GetNewDoubleValue(newValue));}
 if( command == setEta2Cmd)  {      fAction->SetEta2(setEta2Cmd->GetNewDoubleValue(newValue));}
 if( command == setEta3Cmd)  {      fAction->SetEta3(setEta3Cmd->GetNewDoubleValue(newValue));}
 if( command == setEta4Cmd)  {      fAction->SetEta4(setEta4Cmd->GetNewDoubleValue(newValue));}
 if( command == setEta5Cmd)  {      fAction->SetEta5(setEta5Cmd->GetNewDoubleValue(newValue));}
+
+if( command == setEta6Cmd)  {      fAction->SetEta6(setEta6Cmd->GetNewDoubleValue(newValue));}
+
 if( command == setCCmd)  {      fAction->SetC(setCCmd->GetNewDoubleValue(newValue));}
 if( command == setVCmd)  {      fAction->SetV(setVCmd->GetNewDoubleValue(newValue));}
 if( command == setf_aCmd)  {      fAction->Setf_a(setf_aCmd->GetNewDoubleValue(newValue));}

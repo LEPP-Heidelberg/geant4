@@ -66,6 +66,9 @@
 #include "G4UnionSolid.hh"
 #include "G4SubtractionSolid.hh"
 
+#include "G4GDMLParser.hh"
+
+
 G4double optpot1 = 0.;
 G4double optpot2 = 0.;
 G4double optpot3 = 0.;
@@ -85,6 +88,9 @@ G4double diff4 = 0.;
 G4double diff5 = 0.;
 
 
+G4double optpot6 = 0.;
+G4double eta6 = 0.;
+G4double diff6 = 0.;
 
 G4double maxstp = 1;
 G4double valveheight = 0.;
@@ -135,6 +141,9 @@ eta4 = 0.00005;
 diff4 = 0.02; 
   
   
+optpot6 = 183.0;
+eta6 = 0.00000;
+diff6 = 0.0; 
 
 	G4String name, symbol ;             // a=mass of a mole;
   G4double a, z, density ;            // z=mean number of protons;  
@@ -204,6 +213,10 @@ diff4 = 0.02;
   GuideMaterial3 = nistMan->FindOrBuildMaterial("Cytop");
   GuideMaterial4 = nistMan->FindOrBuildMaterial("Nickel58");
   GuideMaterial5 = nistMan->FindOrBuildMaterial("Iron");
+  
+  
+  FrameMaterial = nistMan->FindOrBuildMaterial("Iron");
+  
   DetMat = nistMan->FindOrBuildMaterial("G4_Ni");
 /*
   G4UCNMaterialPropertiesTable* MPT = new G4UCNMaterialPropertiesTable();
@@ -286,6 +299,26 @@ G4cout << "************************************optical potential 2 , wich is the
   GuideMaterial4->SetMaterialPropertiesTable(MPT5);
 
   //G4cout << *(G4Material::GetMaterialTable()) << G4endl;
+
+G4UCNMaterialPropertiesTable* MPT6 = new G4UCNMaterialPropertiesTable();
+MPT6->AddConstProperty("DIFFUSION", diff6);
+MPT6->AddConstProperty("FERMIPOT",  optpot6);
+MPT6->AddConstProperty("LOSS",      eta6);
+MPT6->AddConstProperty("LOSSCS",    0.);
+MPT6->AddConstProperty("SPINFLIP",  0.0);
+MPT6->AddConstProperty("ABSCS",     4.49);
+MPT6->AddConstProperty("SCATCS",    6);
+FrameMaterial->SetMaterialPropertiesTable(MPT6);
+
+G4UCNMaterialPropertiesTable* checkMPT = dynamic_cast<G4UCNMaterialPropertiesTable*>(FrameMaterial->GetMaterialPropertiesTable());
+if (checkMPT) {
+    G4cout << "*** FoilMaterial UCN properties:" << G4endl;
+    G4cout << "    FERMIPOT  = " << checkMPT->GetConstProperty("FERMIPOT")  << G4endl;
+    G4cout << "    LOSS      = " << checkMPT->GetConstProperty("LOSS")      << G4endl;
+    G4cout << "    DIFFUSION = " << checkMPT->GetConstProperty("DIFFUSION") << G4endl;
+} else {
+    G4cout << "*** FoilMaterial has no UCN properties table!" << G4endl;
+}
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -642,9 +675,11 @@ G4cout << " z-position " << sideoffset+ 2*cubesizehalf << G4endl;
 
 
 
+G4UserLimits* smallstepLimit = new G4UserLimits(0.001*mm, DBL_MAX, maxTime);
 
+/*
 // vacuum separation foil at  source exit
-  rMax = 2.5*cm;
+  rMax = 25.0*cm;
   rMin = 0*cm;
   hLength = 20.0*mm;
   G4Tubs *solidFoil = new G4Tubs("SolidFoil", rMin, rMax, hLength/2, 0., twopi);
@@ -653,10 +688,13 @@ G4cout << " z-position " << sideoffset+ 2*cubesizehalf << G4endl;
   zRotf->rotateZ(3.14159/2*rad);
     zRotf->rotateY(3.14159/2*rad);
           zRotf->rotateX(3.14159/2*rad);
-logicFoil->SetUserLimits(stepLimit);
-  G4VPhysicalVolume *physiFoil = new G4PVPlacement(zRotf, G4ThreeVector( hLength +cubesizehalf/2,0.,sideoffset+ 2*cubesizehalf), "Foil", logicFoil, physiWorld, false, 0);
 
+G4UserLimits* smallstepLimit = new G4UserLimits(0.001*mm, DBL_MAX, maxTime);
+	  logicFoil->SetUserLimits(smallstepLimit);
+  G4VPhysicalVolume *physiFoil = new G4PVPlacement(zRotf, G4ThreeVector(40.,0.,350.), "Foil", logicFoil, physiWorld, false, 0);
 
+G4cout << "*** Envelope has user limits: " << (logicFoil->GetUserLimits() != nullptr ? "YES" : "NO") << G4endl;
+G4cout << "*** Envelope limit matches smallstepLimit: " << (logicFoil->GetUserLimits() == smallstepLimit ? "YES" : "NO") << G4endl;
 G4cout << "*** vacuum separation foil cylinder at  the source exit (placeholder for explicit cacluation)" << G4endl;
 G4cout << " radius " << rMax << G4endl;
 G4cout << " length " << hLength << G4endl;
@@ -667,7 +705,7 @@ G4cout << " z-position " << sideoffset+ 2*cubesizehalf << G4endl;
 //    logicGuide-> SetVisAttributes (LightGreen);
 
 
-
+*/
 
 
 //// here is the TOF system
@@ -958,7 +996,66 @@ G4cout << " y-position " << -sweptrad-cz/2-6*trMin-2*HLength/2-Dheight/2-distc-c
 G4cout << " z-position " << sideoffset+ 2*cubesizehalf << G4endl;
 
 
+// --- Etching foil from GDML ---
+// Parse the GDML file. The second argument (false) disables schema
+// validation, which is fine for runtime use.
+G4GDMLParser gdmlParser;
+gdmlParser.Read("../ucn/etching_foil.gdml", false);
 
+// Extract ONLY the foil logical volume, NOT the GDML's own world "wl".
+// Placing "wl" would create a world-inside-a-world and break the geometry tree.
+G4LogicalVolume* logicFrame = gdmlParser.GetVolume("l_0_1_1_1");
+
+//G4UserLimits* smallstepLimit = new G4UserLimits(0.001, DBL_MAX, maxTime);
+logicFrame->SetUserLimits(smallstepLimit);
+//G4cout << "*** Envelope step limit: " << smallstepLimit->GetMaxAllowedStep() << G4endl;
+logicFrame->SetMaterial(FrameMaterial);
+// Place the foil as a direct daughter of the main world at the origin.
+// Material and position can be changed later.
+
+G4cout << "*** World step limit object: " << stepLimit << G4endl;
+G4cout << "*** Small step limit object: " << smallstepLimit << G4endl;
+G4cout << "*** Frame has user limits: " << (logicFrame->GetUserLimits() != nullptr ? "YES" : "NO") << G4endl;
+
+
+//rotation 
+G4RotationMatrix* rotFrame = new G4RotationMatrix();
+
+rotFrame->rotateY(90.*deg);
+
+G4VPhysicalVolume* physiFrame = new G4PVPlacement(
+    rotFrame,
+    G4ThreeVector(250.0555555, 0., 350.),
+    logicFrame,
+    "EtchingFoil",
+    logicWorld,
+    false,
+    0
+);
+G4cout << "*** EtchingFoil position: "
+       << " x=" << physiFrame->GetTranslation().x()
+       << " y=" << physiFrame->GetTranslation().y()
+       << " z=" << physiFrame->GetTranslation().z()
+       << " mm" << G4endl;
+
+G4cout << "*** Etching foil material check ***" << G4endl;
+G4cout << "  Material: " << FrameMaterial->GetName() << G4endl;
+G4UCNMaterialPropertiesTable* mpt =
+    (G4UCNMaterialPropertiesTable*) FrameMaterial->GetMaterialPropertiesTable();
+if (mpt) {
+    G4cout << "  FERMIPOT  = " << mpt->GetConstProperty("FERMIPOT")  << G4endl;
+    G4cout << "  LOSS      = " << mpt->GetConstProperty("LOSS")      << G4endl;
+    G4cout << "  DIFFUSION = " << mpt->GetConstProperty("DIFFUSION") << G4endl;
+} else {
+    G4cerr << "  WARNING: No UCN MPT on FrameMaterial!" << G4endl;
+}
+
+
+
+
+// --- End etching foil ---
+
+return physiWorld;
 
 
   //

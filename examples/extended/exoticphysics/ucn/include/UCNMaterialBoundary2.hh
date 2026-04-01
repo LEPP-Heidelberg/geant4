@@ -137,6 +137,11 @@ public:
   void SetEta3(G4double fil);
   void SetEta4(G4double fil);
   void SetEta5(G4double fil);
+
+void SetDiff6(G4double val);
+void SetOpt6(G4double val);
+void SetEta6(G4double val);
+
    void SetC(G4double fil);
   void SetV(G4double fil);
   void Setf_a(G4double fil);
@@ -195,14 +200,19 @@ G4double diff2;
 G4double diff3;
 G4double diff4;
 G4double diff5;
+G4double diff6;
+
 G4double opt1;
 G4double opt2;
 G4double opt3;
+G4double opt6;
+
 G4double eta1;
 G4double eta2;
 G4double eta3;
 G4double eta4;
 G4double eta5;
+G4double eta6;
 
 G4double opt4;
 G4double opt5;

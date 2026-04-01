@@ -49,6 +49,10 @@
 /mat/optpot5 -49
 /mat/eta5 0.0
 /mat/diff5 1.0
+#Frame
+/mat/optpot6 200.0
+/mat/eta6 0.0001
+/mat/diff6 0.0
 
 # Excited State Settings, set excitedFrac = 0 to turn off 
 /mat/excitedFrac 0.0
