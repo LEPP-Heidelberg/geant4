@@ -214,11 +214,19 @@ diff6 = 0.0;
   GuideMaterial4 = nistMan->FindOrBuildMaterial("Nickel58");
   GuideMaterial5 = nistMan->FindOrBuildMaterial("Iron");
   
-  
-  FrameMaterial = nistMan->FindOrBuildMaterial("Iron");
+// test Iron -> FrameIron pointer alias issue when GuideMaterial1 and FrameMateiral were assigned "Iron"   
+// define new "FrameIron". Density etc. not used for UCN calculations, having its own memory allocation distinct from GuideMaterial1 is what matters
+
+G4Material* FrameIron = new G4Material("FrameIron", 7.874*g/cm3, 1);
+FrameIron->AddElement(elFe, 1);
+FrameMaterial = FrameIron;
+
+  FrameMaterial = nistMan->FindOrBuildMaterial("FrameIron");
   
   DetMat = nistMan->FindOrBuildMaterial("G4_Ni");
-/*
+
+  // make the MPT now
+  /*
   G4UCNMaterialPropertiesTable* MPT = new G4UCNMaterialPropertiesTable();
  // MPT->AddConstProperty("TAB", 0);
  MPT->AddConstProperty("DIFFUSION", 0);
@@ -995,6 +1003,8 @@ G4cout << " x-position " << hLength +cubesizehalf/2+2*sweptrad<< G4endl;
 G4cout << " y-position " << -sweptrad-cz/2-6*trMin-2*HLength/2-Dheight/2-distc-cwidth - extralength << G4endl;
 G4cout << " z-position " << sideoffset+ 2*cubesizehalf << G4endl;
 
+// test comment out foil and run vTOF
+
 
 // --- Etching foil from GDML ---
 // Parse the GDML file. The second argument (false) disables schema
@@ -1055,7 +1065,8 @@ if (mpt) {
 
 // --- End etching foil ---
 
-return physiWorld;
+
+
 
 
   //
