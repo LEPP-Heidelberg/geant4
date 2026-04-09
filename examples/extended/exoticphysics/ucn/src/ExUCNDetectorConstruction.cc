@@ -478,7 +478,7 @@ G4double convcubesize = 50.; // halfsize of convertercube
 G4double tiefe = 286.;
 
 // the downward tube into the converter volume
- G4double reducedheight = 0;
+ G4double reducedheight = converterRadius - 37.5;
   rMax = 7*cm;
 rMin = 0.0*cm; // Use this for closed converter
 
@@ -513,19 +513,19 @@ G4cout << " z-position " << longzero  << G4endl;
  logicValve->SetUserLimits(stepLimit);
 
 
-//G4VPhysicalVolume *physiValve = new G4PVPlacement(zRot7, G4ThreeVector(-sideoffset - 2*cubesizehalf,-tiefe+196./2.+convcubesize + reducedheight/2. + valveheight,longzero), "Valve", logicValve, physiWorld, false, 0);
-G4VPhysicalVolume* physiValve = new G4PVPlacement(zRot7, G4ThreeVector( -sideoffset - 2*cubesizehalf, -tiefe + converterRadius - valveh/2. + valveheight, longzero), "Valve", logicValve, physiWorld, false, 0);
+// The valve is hardcoded to lie at -valveheight (mm) from the real converter's (R=37.5mm) top wall, changing converterRadius does NOT affect the valve
+G4VPhysicalVolume* physiValve = new G4PVPlacement(zRot7, G4ThreeVector( -sideoffset - 2*cubesizehalf, -tiefe + 37.5 - valveh/2. + valveheight, longzero), "Valve", logicValve, physiWorld, false, 0);
 G4cout << "*** valve " << G4endl;
 G4cout << " valve height " << valveheight <<G4endl;
 G4cout << " inside radius " << rMin << G4endl;
-G4cout << " length " << 196./2. - reducedheight /2. << G4endl;
+G4cout << " length " << valveh/2 << G4endl;
 G4cout << " x-position " << -sideoffset - 2*cubesizehalf << G4endl;
-G4cout << " Valve y-position " << valveheight -tiefe+196./2.+convcubesize + reducedheight/2. << G4endl;
+G4cout << " Valve y-position " << -tiefe + 37.5 - valveh/2. + valveheight << G4endl;
 G4cout << " z-position " << longzero  << G4endl;
 
 // Rod actuating the valve
-G4double fixed_ceiling = 25.; //+ cubesizehalf;  // fixed top of rod
-G4double y_valve_top   = -tiefe + converterRadius + valveheight;
+G4double fixed_ceiling = 25.; // fixed top of rod
+G4double y_valve_top   = -tiefe + 37.5 + valveheight;
 G4double rodh          = fixed_ceiling - y_valve_top;  // shrinks as valveheight increases
 
 G4Tubs *solidRod = new G4Tubs("SolidRod", 0., 0.7*mm, rodh/2., 0., twopi);
@@ -581,14 +581,16 @@ G4cout << " rod y-centre " << y_rod_centre << G4endl;
 ////  
 
 // cube in converter volume with connection to upward tube:
-  G4Box * solidCubeConverter = new G4Box("convertreCube3", convcubesize*mm,convcubesize*mm,convcubesize*mm);       //its size
+  G4Box * solidCubeConverter = new G4Box("convertreCube3", (12.5+converterRadius)*mm,convcubesize*mm,(12.5+converterRadius)*mm);       //its size must grow in the up--down direction along with the converter radius
 
 
-  G4Tubs *solidHoleInCubeConverter = new G4Tubs("SolidHoleConverter", 0., 25., 25., 0., twopi) ;
-  //G4VSolid* subtract6 = new G4SubtractionSolid("box-cylinder5",
- //                 solidCubeConverter, solidHoleInCubeConverter,0, G4ThreeVector(0.,0.,25.));
-  G4VSolid* subtract6 = solidCubeConverter;                 
-  G4Tubs *solidHoleInCubeConverter2 = new G4Tubs("SolidHoleConverter2 ", 0., 37.5, 50.1, 0., twopi);
+
+  G4Tubs *solidHoleInCubeConverter = new G4Tubs("SolidHoleConverter", 0., 25., 2.*(12.5+converterRadius), 0., twopi) ;
+  G4VSolid* subtract6 = new G4SubtractionSolid("box-cylinder5",
+                  solidCubeConverter, solidHoleInCubeConverter,0, G4ThreeVector(0.,0.,2.*(12.5+converterRadius)));
+  //G4VSolid* subtract6 = solidCubeConverter;                 
+  G4Tubs *solidHoleInCubeConverter2 = new G4Tubs("SolidHoleConverter2 ", 0., converterRadius, 50.1, 0., twopi);
+
 G4RotationMatrix * zRot006 = new G4RotationMatrix();
  zRot006->rotateX(3.14159/2*rad);
   G4VSolid* subtract7 = new G4SubtractionSolid("box-cylinder6", subtract6, solidHoleInCubeConverter2,zRot006, G4ThreeVector(0.,0.,0.));
@@ -617,7 +619,7 @@ G4cout << " z-position " << longzero << G4endl;
 
 
 // converter volume
-  G4Tubs *solidConverter = new G4Tubs("SolidConverter", converterRadius, 150., converterLength, 0., twopi);
+  G4Tubs *solidConverter = new G4Tubs("SolidConverter", converterRadius, 112.5 + converterRadius, converterLength, 0., twopi);
   G4LogicalVolume *logicConverter = new  G4LogicalVolume(solidConverter,  GuideMaterial2, "SolidConverter");
   G4RotationMatrix * zRot13 = new G4RotationMatrix();
   logicConverter->SetUserLimits(stepLimit);
@@ -632,7 +634,7 @@ G4cout << " z-position " << longzero-1500.-convcubesize  << G4endl;
   
   // We scale up the plugs by 50/37.5 * converterRadius to keep the volume sealed
   // converter volume PLUGs
-  G4Tubs *solidConverterPlug = new G4Tubs("SolidConverterPlug1", 0., 50./37.5 * converterRadius, 5., 0., twopi);
+  G4Tubs *solidConverterPlug = new G4Tubs("SolidConverterPlug1", 0., 12.5 + converterRadius, 5., 0., twopi);
   G4LogicalVolume *logicConverterPlug = new  G4LogicalVolume(solidConverterPlug,  GuideMaterial4, "SolidConverterPlug");
   logicConverterPlug->SetUserLimits(stepLimit);
   G4VPhysicalVolume *physiConverterPlug = new G4PVPlacement(zRot13, G4ThreeVector(-sideoffset - 2*cubesizehalf,-tiefe,longzero-(converterLength*2+5.)-convcubesize), "Converterplug1", logicConverterPlug, physiWorld, false, 0);
@@ -646,7 +648,7 @@ G4cout << " z-position " << longzero-3005.-convcubesize  << G4endl;
 
 
 //converter volume PLUGs
-  G4Tubs *solidConverterPlug2 = new G4Tubs("SolidConverterPlg2", 0., 50./37.5 * converterRadius, 5., 0., twopi);
+  G4Tubs *solidConverterPlug2 = new G4Tubs("SolidConverterPlg2", 0., 12.5 + converterRadius, 5., 0., twopi); 
   G4LogicalVolume *logicConverterPlug2 = new  G4LogicalVolume(solidConverterPlug2,  GuideMaterial4, "SolidConverterPlug2");
   logicConverterPlug2->SetUserLimits(stepLimit);
   G4VPhysicalVolume *physiConverterPlug2 = new G4PVPlacement(zRot13, G4ThreeVector(-sideoffset - 2*cubesizehalf,-tiefe,longzero+55.), "Converterplug2", logicConverterPlug2, physiWorld, false, 0);
@@ -661,10 +663,7 @@ G4cout << " z-position " << longzero+55  << G4endl;
 
 G4double hLength = 430.0*mm;
 
-// guide from source exit into the sourc
-//
-//
-// e
+// guide from source exit into the second upper cube
   rMax = 7.0 * cm;
   rMin = 2.5 * cm;  
   G4Tubs *solidGuideintosource = new G4Tubs("SolidGuide", rMin, rMax, hLength/2., 0., twopi);
