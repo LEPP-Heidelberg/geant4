@@ -675,7 +675,7 @@ if (  pPreStepPoint->GetPosition().getX() > 150 ){
  
   
 //if ( aTrack.GetGlobalTime()*1e-9 > betadecaylifetime){
-if ( (aTrack.GetGlobalTime() * 1e-9 > betadecaylifetime) && (isExcited == false)){ 
+if ( (aTrack.GetLocalTime() * 1e-9 > betadecaylifetime) && (isExcited == false)){ 
 //G4cout << "beta decay " << G4endl;
 
 std::ofstream myfile(outputfile1, std::ofstream::app);
@@ -774,7 +774,7 @@ if ( (aTrack.GetGlobalTime()*1e-9 > downShiftLifetime) && (isExcited == true) &&
 
 
 
-if ( aTrack.GetGlobalTime()*1e-9 > heliumlifetime){
+if ( aTrack.GetLocalTime()*1e-9 > heliumlifetime){
         //G4cout << "helium loss " << G4endl;
 
 std::ofstream myfile(outputfile1, std::ofstream::app);
