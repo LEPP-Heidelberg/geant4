@@ -1,2 +1,3 @@
 # Ignore ucn_build, used as a working directory for every user
 examples/extended/exoticphysics/*_build/
+examples/extended/exoticphysics/sims-make-port/

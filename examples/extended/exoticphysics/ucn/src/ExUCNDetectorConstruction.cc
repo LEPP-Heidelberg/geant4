@@ -480,9 +480,9 @@ G4double tiefe = 286.;
 // the downward tube into the converter volume
  G4double reducedheight = converterRadius - 37.5;
   rMax = 7*cm;
-rMin = 0.0*cm; // Use this for closed converter
+//rMin = 0.0*cm; // Use this for closed converter
 
-//  rMin = 2.5*cm; // Use this for vTOF / Extraction
+  rMin = 2.5*cm; // Use this for vTOF / Extraction
   G4Tubs *solidDownwardTube = new G4Tubs("SolidTubeD", rMin, rMax, 196./2. - reducedheight /2., 0., twopi);
   G4LogicalVolume *logicDownwardTube = new  G4LogicalVolume(solidDownwardTube,  GuideMaterial1, "SolidTubeD");
   G4RotationMatrix * zRot7 = new G4RotationMatrix();
@@ -503,7 +503,7 @@ G4cout << " z-position " << longzero  << G4endl;
 
 
 
-/*
+
 // the disc valve sealing the converter
    rMax = 3.0*cm;
    rMin = 0*cm;
@@ -542,7 +542,7 @@ G4VPhysicalVolume* physiRod = new G4PVPlacement(
 G4cout << "*** rod " << G4endl;
 G4cout << " rod height " << rodh << G4endl;
 G4cout << " rod y-centre " << y_rod_centre << G4endl;
-*/
+
 
 /*
 /////
@@ -632,7 +632,7 @@ G4cout << " x-position " << -sideoffset - 2*cubesizehalf << G4endl;
 G4cout << " y-position " << -tiefe << G4endl;
 G4cout << " z-position " << longzero-1500.-convcubesize  << G4endl;
   
-  // We scale up the plugs by 50/37.5 * converterRadius to keep the volume sealed
+  // We size up the plugs by 12.5 + converterRadius to keep the volume sealed
   // converter volume PLUGs
   G4Tubs *solidConverterPlug = new G4Tubs("SolidConverterPlug1", 0., 12.5 + converterRadius, 5., 0., twopi);
   G4LogicalVolume *logicConverterPlug = new  G4LogicalVolume(solidConverterPlug,  GuideMaterial4, "SolidConverterPlug");
