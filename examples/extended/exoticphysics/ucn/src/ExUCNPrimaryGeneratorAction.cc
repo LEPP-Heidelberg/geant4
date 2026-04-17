@@ -105,13 +105,13 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
    G4ThreeVector yaxis(0,1,0);
 
 
-  G4double x1 = G4UniformRand()*72.-R;
-  G4double z1  = G4UniformRand()*72.-R;
+  G4double x1 = G4UniformRand()*(2*R)-R;
+  G4double z1  = G4UniformRand()*(2*R)-R;
      G4double radius1 = sqrt(x1*x1+z1*z1);
    while (radius1 > R)
    {
-    x1 = G4UniformRand()*72.-R;
-    z1  = G4UniformRand()*72.-R;
+    x1 = G4UniformRand()*(2*R)-R;
+    z1  = G4UniformRand()*(2*R)-R;
    radius1 = sqrt(x1*x1+z1*z1);
    }
 
@@ -129,7 +129,7 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
    fParticleGun->SetParticlePosition(gunPositionShift);
    fParticleGun->SetParticleEnergy(particleEnergy);
-   G4cout << "E = " << particleEnergy << G4endl;
+   G4cout << "Energy = " << particleEnergy * 1e15 << " neV" << G4endl;
    //G4cout << " energy " << gunEnergy_neV << G4endl;
 
 std::ofstream myfile("start.txt", std::ofstream::app);
@@ -161,7 +161,7 @@ std::ofstream myfile("start.txt", std::ofstream::app);
 	    
     
     myfile << particleEnergy*1e15 <<  " " << startmom.getX() << " " << startmom.getY() << " " << startmom.getZ() << " " << gunPositionShift.getX() << " " << gunPositionShift.getY()  << " " << gunPositionShift.getZ() <<  std::endl;  
-    G4cout << "startmomem " << startmom.getX() << ";" << startmom.getY() << ";" << startmom.getZ() << G4endl;
+    G4cout << "Momentum: " << startmom.getX() << ";" << startmom.getY() << ";" << startmom.getZ() << G4endl;
 
     fParticleGun->SetParticleMomentumDirection(startmom.unit());
     

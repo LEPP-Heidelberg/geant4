@@ -597,7 +597,7 @@ G4double foiltrans = exp(-mu*dx);
 
 G4double counted = G4UniformRand();
 if (counted > foiltrans){
-G4cout << "Killed pp foil" << foiltrans << ", rnd=  " << counted << G4endl;
+G4cout << "Killed in pp foil with foiltrans = " << foiltrans << ", rnd = " << counted << G4endl;
 
 	std::ofstream myfile(outputfile1, std::ofstream::app);
           myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<
@@ -679,7 +679,7 @@ if ( (aTrack.GetLocalTime() * 1e-9 > betadecaylifetime) && (isExcited == false))
 //G4cout << "beta decay " << G4endl;
 
 std::ofstream myfile(outputfile1, std::ofstream::app);
-G4cout << "beta decay " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
+G4cout << "Beta decay " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
 
 myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "11000" << std::endl;
 
@@ -824,7 +824,7 @@ if ( volnam1 == "Det"  ){
 // AlMG3 foil transmission for 0.1 mm foil thickness
 G4double my = aTrack.GetMomentumDirection().getY();
 G4double v = aTrack.GetVelocity()*1e6-my;
-            G4cout << "vertical velocity " << aTrack.GetVelocity()*1e6 << " my " << my << " vy " << v << G4endl;
+            G4cout << "Vertical velocity " << aTrack.GetVelocity()*1e6 << " my " << my << " vy " << v << G4endl;
 G4double foiltrans = 0;
 
 foiltrans = exp(-0.627043/v);
@@ -1051,7 +1051,7 @@ if (Material1 == Material2)  return G4VDiscreteProcess::PostStepDoIt(aTrack, aSt
 //G4cout << " below crit, ref = " << reflection << " rnd " << rnd1 << G4endl;
 
       if (rnd1 > reflection){             // loss on reflection
-		G4cout << " loss!" << G4endl;
+		G4cout << "Wall loss" << G4endl;
         std::ofstream myfile(outputfile1, std::ofstream::app);
         myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "5000" << std::endl;
         // kill it.
@@ -1073,7 +1073,7 @@ if (Material1 == Material2)  return G4VDiscreteProcess::PostStepDoIt(aTrack, aSt
           G4double rnd2 = G4UniformRand();
 	  if (remember_random){ rnd2 = remember_random; remember_random = 0; }
           if (rnd2 <  reflection){
-            //G4cout << "above v_c reflect " << G4endl;
+            G4cout << "Above v_c reflect " << G4endl;
                 ////// reflect it
           G4ThreeVector ref = reflect(0, pdiffus, momdir, theGlobalNormal);
           aParticleChange.ProposeMomentumDirection(ref.unit());
@@ -1116,7 +1116,7 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
 
 
 
-                G4cout << "KILL WHEN ENTERING CHOPPER BLADES!!!! " << G4endl;
+                G4cout << "Lost when entering chopper blades" << G4endl;
 std::ofstream myfile(outputfile1, std::ofstream::app);
    //return &aParticleChange;    
    myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "17000" << std::endl;
@@ -1125,7 +1125,7 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
           }
 
 	    
-          G4cout << "above vc transmit" << G4endl; 
+          G4cout << "Above v_c transmit" << G4endl; 
           // --- transmission because it is faster than the critical velocity
           G4double enew = transmit(fermipot_diff, energy);
           G4double m = -sqrt(momnorm*momnorm - CLHEP::neutron_mass_c2*2.*fermipot_diff*neV);

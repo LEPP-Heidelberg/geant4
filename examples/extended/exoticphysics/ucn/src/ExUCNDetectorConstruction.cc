@@ -509,7 +509,7 @@ G4cout << " z-position " << longzero  << G4endl;
    rMin = 0*cm;
    G4double valveh = 0.5*cm;
   G4Tubs *solidValve = new G4Tubs("SolidValve", rMin, rMax, valveh/2, 0., twopi);
-  G4LogicalVolume *logicValve = new  G4LogicalVolume(solidValve,  GuideMaterial1, "SolidValve");
+  G4LogicalVolume *logicValve = new  G4LogicalVolume(solidValve,  GuideMaterial4, "SolidValve");
  logicValve->SetUserLimits(stepLimit);
 
 
