@@ -433,8 +433,8 @@ heliumlifetime = -std::log(1.0 - G4UniformRand()) * meanHeLifetime + aTrack.GetG
   G4StepPoint* pPostStepPoint = aStep.GetPostStepPoint();
   G4String volnam1 = pPreStepPoint->GetPhysicalVolume()->GetName();
   G4String volnam2 = pPostStepPoint->GetPhysicalVolume()->GetName();
-  G4String volnam1a = pPreStepPoint->GetPhysicalVolume()->GetName();
-  G4String volnam2a = pPostStepPoint->GetPhysicalVolume()->GetName();
+  //G4String volnam1a = pPreStepPoint->GetPhysicalVolume()->GetName(); during TH speedup effort, found these here each time for no reason!
+  //G4String volnam2a = pPostStepPoint->GetPhysicalVolume()->GetName();
 
 
 

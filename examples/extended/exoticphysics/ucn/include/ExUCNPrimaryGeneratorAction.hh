@@ -36,6 +36,9 @@
 
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "globals.hh"
+#include <vector>
+
+
 
 class G4Event;
 class G4ParticleGun;
@@ -77,7 +80,18 @@ private:
     // End SBI v2
     // NEW: pointer to detector
     ExUCNDetectorConstruction* fDetector;
+// attempt at faster Espec stuff
+ 
+    std::vector<double> fSpecVelo;
+std::vector<double> fSpecEntries;
+double fSpecSum = 0.0;
+G4bool fSpecLoaded = false;
+
+
+void LoadEspec();  // add to method declarations
+
 };
+
 
 //....oooOO0OOooo........oooOO0OOooo......
 

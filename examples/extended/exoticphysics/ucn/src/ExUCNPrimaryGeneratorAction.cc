@@ -186,6 +186,12 @@ std::ofstream myfile("start.txt", std::ofstream::app);
 
   }
 
+// ============================================================
+// ORIGINAL Espec: reads the file from disk on every single call.
+// Kept for reference — switch back by commenting out the new
+// version below and un-commenting this one.
+// ============================================================
+/*
 G4double ExUCNPrimaryGeneratorAction::Espec(G4String fnam){
 
 G4double e = G4UniformRand();
@@ -216,11 +222,76 @@ G4double e = G4UniformRand();
         return energy;
         }
      }
-     //}
 
-   //}
    return e;
 }
+*/
+
+// ============================================================
+// NEW Espec: uses vectors pre-loaded by LoadEspec() / SetEspec().
+// The file is read exactly once; every event just samples from
+// the cached data.  fSpecSum is also cached so we avoid
+// re-summing on every call.
+//
+// NOTE: there was a latent out-of-bounds bug in the original
+// when k==0 and e < ref on the very first bin (velo[k-1] would
+// be velo[-1]).  The guard below fixes that.
+// ============================================================
+
+
+G4double ExUCNPrimaryGeneratorAction::Espec(G4String )
+{
+  if (!fSpecLoaded || fSpecEntries.empty()) {
+    G4cerr << "WARNING: Spectrum not loaded, returning uniform random." << G4endl;
+    return G4UniformRand();
+  }
+
+  G4double e = G4UniformRand();
+  int n = (int)fSpecEntries.size();
+
+  double ref = 0.0, refold = 0.0;
+  for (int k = 0; k < n; k++) {
+    refold = ref;
+    ref += fSpecEntries[k] / fSpecSum;   // fSpecSum cached — no per-event loop
+
+    if (e < ref) {
+      // Guard against the k==0 edge case (velo[k-1] would be out of bounds)
+      if (k == 0) return fSpecVelo[0];
+      return (fSpecVelo[k] - fSpecVelo[k-1]) / (ref - refold) * (e - refold) + fSpecVelo[k-1];
+    }
+  }
+  return e;
+}
+
+// ============================================================
+// NEW: LoadEspec — called once from SetEspec().
+// Reads the file into fSpecVelo / fSpecEntries and pre-computes
+// fSpecSum so that Espec() never touches the disk again.
+// ============================================================
+
+
+void ExUCNPrimaryGeneratorAction::LoadEspec()
+{
+  double velo[1000], entries[1000];
+  int n = read_two_column_file(Especfile, velo, entries, 1000);
+  if (n <= 0) {
+    G4cerr << "ERROR: Could not load spectrum file: " << Especfile << G4endl;
+    fSpecLoaded = false;
+    return;
+  }
+
+  fSpecVelo.assign(velo, velo + n);
+  fSpecEntries.assign(entries, entries + n);
+
+  // Pre-compute the sum so Espec() doesn't have to on every event
+  fSpecSum = 0.0;
+  for (int a = 0; a < n; a++) fSpecSum += entries[a];
+
+  fSpecLoaded = true;
+  G4cout << "Loaded spectrum file: " << Especfile
+         << " (" << n << " entries, sum = " << fSpecSum << ")" << G4endl;
+}
+
 
 int ExUCNPrimaryGeneratorAction::read_two_column_file(const char *filename, double x[], double y[], size_t maxSize) {
         FILE *fp = fopen(filename, "r");
@@ -270,9 +341,28 @@ void ExUCNPrimaryGeneratorAction::SettA(G4double e)
 } 
 //
 
+// ============================================================
+// ORIGINAL SetEspec: just stores the filename, file is opened
+// on every event inside Espec().
+// ============================================================
+/*
 void ExUCNPrimaryGeneratorAction::SetEspec(G4String fil){
-Especfile = fil;
-//G4cout << " set energy spec " << fil << G4endl;
+  Especfile = fil;
+  //G4cout << " set energy spec " << fil << G4endl;
+}
+*/
+
+// ============================================================
+// NEW SetEspec: stores the filename AND immediately loads the
+// data into memory via LoadEspec(), so the file is only ever
+// read this one time.
+// ============================================================
+
+
+void ExUCNPrimaryGeneratorAction::SetEspec(G4String fil)
+{
+  Especfile = fil;
+  LoadEspec();   // <-- only change: load once here
 }
 
 

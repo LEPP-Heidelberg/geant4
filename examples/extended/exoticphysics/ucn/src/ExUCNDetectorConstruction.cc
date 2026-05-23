@@ -480,9 +480,9 @@ G4double tiefe = 286.;
 // the downward tube into the converter volume
  G4double reducedheight = 0;
   rMax = 7*cm;
-rMin = 0.0*cm; // Use this for closed converter
+//rMin = 0.0*cm; // Use this for closed converter
 
-//  rMin = 2.5*cm; // Use this for vTOF / Extraction
+  rMin = 2.5*cm; // Use this for vTOF / Extraction
   G4Tubs *solidDownwardTube = new G4Tubs("SolidTubeD", rMin, rMax, 196./2. - reducedheight /2., 0., twopi);
   G4LogicalVolume *logicDownwardTube = new  G4LogicalVolume(solidDownwardTube,  GuideMaterial1, "SolidTubeD");
   G4RotationMatrix * zRot7 = new G4RotationMatrix();
@@ -503,7 +503,7 @@ G4cout << " z-position " << longzero  << G4endl;
 
 
 
-/*
+
 // the disc valve sealing the converter
    rMax = 3.0*cm;
    rMin = 0*cm;
@@ -542,7 +542,7 @@ G4VPhysicalVolume* physiRod = new G4PVPlacement(
 G4cout << "*** rod " << G4endl;
 G4cout << " rod height " << rodh << G4endl;
 G4cout << " rod y-centre " << y_rod_centre << G4endl;
-*/
+
 
 /*
 /////
@@ -560,8 +560,8 @@ G4cout << " rod y-centre " << y_rod_centre << G4endl;
  logicDownwardTubeempty->SetUserLimits(stepLimit2);
 
  G4VPhysicalVolume *physiDownwardTubeempty = new G4PVPlacement(zRot7, G4ThreeVector(-sideoffset - 2*cubesizehalf,-hetiefe+20./2.+convcubesize + reducedheight/2.,longzero), "DownwardTubeempty", logicDownwardTubeempty, physiWorld, false, 0);
-
 */
+
 
 
 
@@ -585,9 +585,9 @@ G4cout << " rod y-centre " << y_rod_centre << G4endl;
 
 
   G4Tubs *solidHoleInCubeConverter = new G4Tubs("SolidHoleConverter", 0., 25., 25., 0., twopi) ;
-  //G4VSolid* subtract6 = new G4SubtractionSolid("box-cylinder5",
- //                 solidCubeConverter, solidHoleInCubeConverter,0, G4ThreeVector(0.,0.,25.));
-  G4VSolid* subtract6 = solidCubeConverter;                 
+  G4VSolid* subtract6 = new G4SubtractionSolid("box-cylinder5",
+                  solidCubeConverter, solidHoleInCubeConverter,0, G4ThreeVector(0.,0.,25.));
+ // G4VSolid* subtract6 = solidCubeConverter;                 
   G4Tubs *solidHoleInCubeConverter2 = new G4Tubs("SolidHoleConverter2 ", 0., 37.5, 50.1, 0., twopi);
 G4RotationMatrix * zRot006 = new G4RotationMatrix();
  zRot006->rotateX(3.14159/2*rad);
