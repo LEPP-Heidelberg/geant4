@@ -107,7 +107,7 @@ G4cout << "create messenger for the UCN DetectorConstruction class " << G4endl;
   setxGunDirectionCmd12->SetDefaultValue(0.0) ;
 
      setxGunDirectionCmd13 = new G4UIcmdWithADouble("/det/valveheight",this);
-  setxGunDirectionCmd13->SetGuidance("Set height of the valve in mm");
+  setxGunDirectionCmd13->SetGuidance("UCN valve: offset in mm of its top face from the enclosure cavity roof (0 = closed, negative = open)");
   setxGunDirectionCmd13->SetParameterName("xv13",true);
   setxGunDirectionCmd13->SetDefaultValue(0.0) ;
 

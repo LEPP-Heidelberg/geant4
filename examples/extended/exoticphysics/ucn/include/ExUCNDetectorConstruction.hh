@@ -36,6 +36,7 @@
 
 #include "G4VUserDetectorConstruction.hh"
 #include "globals.hh"
+#include "G4ThreeVector.hh"
 //#include "ExUCNDetectorConstructionMessenger.hh"
 
 class G4Material;
@@ -68,6 +69,9 @@ class ExUCNDetectorConstruction : public G4VUserDetectorConstruction
     G4double GetConverterRadius() const { return fConverterRadius; }
     G4double GetConverterLength() const { return fConverterLength; }
     // End SBI v2 Sanity Checks
+    // NEW (Claude): enclosure part-frame origin in world coordinates, set in Construct();
+    // used by ExUCNVisOnlyWorld to draw the vis-only enclosure body at the same place.
+    G4ThreeVector GetEnclosurePartOrigin() const { return fEnclosurePartOrigin; }
   public:
     virtual G4VPhysicalVolume* Construct();
     virtual void ConstructSDandField();
@@ -86,6 +90,14 @@ class ExUCNDetectorConstruction : public G4VUserDetectorConstruction
     G4Material* GuideMaterial5;
 
     G4Material* FrameMaterial;
+    // NEW (Claude): converter end-unit enclosure/window materials (GDML integration,
+    // see GDML_ENCLOSURE_INTEGRATION.md).
+    G4Material* EnclosureMaterial;
+    G4Material* WindowMaterial;
+    // NEW (Claude): quartz-converter pressure flange (flange_polycone.gdml); own
+    // material so its placeholder UCN MPT can't leak into any GuideMaterialN.
+    G4Material* FlangeMaterial;
+    G4ThreeVector fEnclosurePartOrigin;  // NEW (Claude), see GetEnclosurePartOrigin()
     // SBI v2
     // To pass the Converter Properties to the Gun`
     G4double fConverterRadius;

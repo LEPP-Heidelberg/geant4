@@ -6,7 +6,8 @@
 
 /vis/open
 /vis/scene/add/trajectories
-/vis/drawVolume
+/vis/drawVolume worlds   # "worlds": also draws the vis-only enclosure body, if the program was
+                         # started with -visbody 1 (that disables gravity: geometry viewing only)
 /vis/scene/endOfEventAction accumulate
 
 /vis/viewer/set/viewpointVector -1 0 0
@@ -19,7 +20,7 @@
 /vis/scene/add/scale   # Simple scale line
 /vis/scene/add/axes    # Simple axes: x=red, y=green, z=blue.
 
-/det/converterRadius 37.5
+/det/converterRadius 37.2
 /det/converterLength 1500
 
 # set mono energy
@@ -69,8 +70,10 @@
 # Set chopper function 
 /mat/chopperFile chopperfunction.dat
 
-#shutter plug geometry height
-/det/valveheight -18
+#UCN valve: offset (mm) of its top face from the enclosure cavity roof.
+# 0 = closed (pressed on the roof, sealing the top port); negative = opened downward.
+# (Was -18 with the old converter-cube valve, whose position meant something else.)
+/det/valveheight 0
 
 # --- All geometry redefinitions must be above this line --- 
 /run/reinitializeGeometry
@@ -92,4 +95,4 @@
 # set maximum step size for all source geometries (all the same)
 /det/stepsize 1
 # how many particles are run
-/run/beamOn 2
+/run/beamOn 20

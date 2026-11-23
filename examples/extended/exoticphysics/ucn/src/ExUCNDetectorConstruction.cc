@@ -96,7 +96,7 @@ G4double maxstp = 1;
 G4double valveheight = 0.;
 
 // SBI v2 Sanity Checks
-G4double converterRadius = 37.5;
+G4double converterRadius = 37.2;  // NEW (Claude): was 37.5; inner radius of the quartz converter tube
 G4double converterLength = 3000./2;
 // End SBI v2
 ;//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -222,8 +222,30 @@ FrameIron->AddElement(elFe, 1);
 FrameMaterial = FrameIron;
 
   FrameMaterial = nistMan->FindOrBuildMaterial("FrameIron");
-  
+
   DetMat = nistMan->FindOrBuildMaterial("G4_Ni");
+
+  // --- NEW (Claude): converter end-unit enclosure/window materials for the
+  // GDML integration. The enclosure is DLC-coated hardware, not bare
+  // aluminium, so it uses GuideMaterial4 (same as Cube1/Cube2 -- per
+  // instruction, GuideMaterial4 aside from the converter endcaps is "the UCN
+  // box"), picking up GuideMaterial4's existing UCN MPT (MPT5 below) as-is.
+  // The GDML file's own EN_AW_5083/Vacuum materials are not used; see
+  // GDML_ENCLOSURE_INTEGRATION.md for what's still left to reconcile there.
+  EnclosureMaterial = GuideMaterial4;
+  WindowMaterial = Beryllium;
+  // --- END NEW ---
+
+  // --- NEW (Claude): pressure flange ("Bride Pression Tube Quartz-Converter").
+  // Its own G4Material (not an alias of Iron/FrameIron/GuideMaterialN), so the
+  // placeholder UCN MPT below cannot change any other volume. Composition is a
+  // generic 316L-like stainless steel; the real alloy is still to be confirmed.
+  G4Material* FlangeSteel = new G4Material("FlangeSteel_PLACEHOLDER", 8.0*g/cm3, 3);
+  FlangeSteel->AddElement(elFe, fractionmass = 0.71);
+  FlangeSteel->AddElement(nistMan->FindOrBuildElement("Cr"), fractionmass = 0.17);
+  FlangeSteel->AddElement(elNi, fractionmass = 0.12);
+  FlangeMaterial = FlangeSteel;
+  // --- END NEW ---
 
   // make the MPT now
   /*
@@ -327,6 +349,58 @@ if (checkMPT) {
 } else {
     G4cout << "*** FoilMaterial has no UCN properties table!" << G4endl;
 }
+
+// --- NEW (Claude): converter end-unit exit window UCN properties. ---
+// EnclosureMaterial == GuideMaterial4 (set above), so it already has its own
+// correct UCN MPT (MPT5 above, with optpot4/eta4/diff4) -- intentionally NOT
+// touched again here, since re-setting it would also silently change Cube1
+// and Cube2, which share the same GuideMaterial4 pointer.
+//
+// Beryllium exit window: PLACEHOLDER values -- literature Fermi potential for
+// Be is ~252 neV; loss/diffusion have not been measured/confirmed for this
+// project. Flagged for confirmation, not to be treated as final.
+G4double berylliumFermiPotential_PLACEHOLDER = 252.0;  // neV
+G4double berylliumLoss_PLACEHOLDER = 0.0001;
+G4double berylliumDiffusion_PLACEHOLDER = 0.02;
+G4UCNMaterialPropertiesTable* MPT_Window = new G4UCNMaterialPropertiesTable();
+MPT_Window->AddConstProperty("DIFFUSION", berylliumDiffusion_PLACEHOLDER);
+MPT_Window->AddConstProperty("FERMIPOT", berylliumFermiPotential_PLACEHOLDER);
+MPT_Window->AddConstProperty("LOSS", berylliumLoss_PLACEHOLDER);
+MPT_Window->AddConstProperty("LOSSCS", 0.);
+MPT_Window->AddConstProperty("SPINFLIP", 0.0);
+MPT_Window->AddConstProperty("ABSCS", 4.49);
+MPT_Window->AddConstProperty("SCATCS", 1);
+WindowMaterial->SetMaterialPropertiesTable(MPT_Window);
+G4cout << "*** PLACEHOLDER Be exit window UCN properties in use (FERMIPOT="
+       << berylliumFermiPotential_PLACEHOLDER
+       << " neV, LOSS=" << berylliumLoss_PLACEHOLDER
+       << ", DIFFUSION=" << berylliumDiffusion_PLACEHOLDER
+       << ") -- confirm against measured values" << G4endl;
+// --- END NEW ---
+
+// --- NEW (Claude): pressure flange UCN properties -- PLACEHOLDER values.
+// UCN in the converter tube see the flange's conical lip (inner wall and the
+// nose facing the converter) and its bore face toward the enclosure, so it
+// needs a real MPT. ~185 neV is a typical stainless-steel Fermi potential;
+// LOSS/DIFFUSION are generic placeholders. Replace once the alloy is known.
+G4double flangeFermiPotential_PLACEHOLDER = 185.0;  // neV
+G4double flangeLoss_PLACEHOLDER = 0.0001;
+G4double flangeDiffusion_PLACEHOLDER = 0.02;
+G4UCNMaterialPropertiesTable* MPT_Flange = new G4UCNMaterialPropertiesTable();
+MPT_Flange->AddConstProperty("DIFFUSION", flangeDiffusion_PLACEHOLDER);
+MPT_Flange->AddConstProperty("FERMIPOT", flangeFermiPotential_PLACEHOLDER);
+MPT_Flange->AddConstProperty("LOSS", flangeLoss_PLACEHOLDER);
+MPT_Flange->AddConstProperty("LOSSCS", 0.);
+MPT_Flange->AddConstProperty("SPINFLIP", 0.0);
+MPT_Flange->AddConstProperty("ABSCS", 4.49);
+MPT_Flange->AddConstProperty("SCATCS", 7);  // unique tag, following MPT..MPT6's 1..6
+FlangeMaterial->SetMaterialPropertiesTable(MPT_Flange);
+G4cout << "*** PLACEHOLDER pressure-flange UCN properties in use (FERMIPOT="
+       << flangeFermiPotential_PLACEHOLDER
+       << " neV, LOSS=" << flangeLoss_PLACEHOLDER
+       << ", DIFFUSION=" << flangeDiffusion_PLACEHOLDER
+       << ") -- confirm alloy and values" << G4endl;
+// --- END NEW ---
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -477,13 +551,66 @@ G4cout << " z-position " << longzero << G4endl;
 G4double convcubesize = 50.; // halfsize of convertercube
 G4double tiefe = 286.;
 
+// ============================================================================
+// --- NEW (Claude): converter end-unit enclosure (GDML) placement anchor ---
+// Part frame (GDML_INTEGRATION_TASK.md): z = beam axis, y = up (56 mm port).
+// That matches our world axes here (converter tube along z, downward tube
+// along y), so no rotation is required -- only a translation of the part
+// origin (the bore axis). x,y put the bore axis on the converter tube axis.
+// z is COMPUTED (2026-11-22) so that the converter tube, which stays where it
+// is (near end at world z = longzero - convcubesize = -50), rests on the
+// pressure flange's lip with zero overlap -- see the seat below.
+
+// Pressure flange (flange_polycone.gdml, generated by build_flange_gdml.py).
+// From Hepworth_UCNbox_flange_window.STEP: coaxial with the enclosure bore,
+// origin at part-frame (0,0,-60.8974) mm, no rotation in the GDML frame; its
+// +z face (local z=+2.8974) then sits exactly on the back-boss face (part z=-58).
+const G4ThreeVector flangeOffsetInPartFrame(0., 0., -60.8973798987*mm);
+// Converter seat. The tube is concentric with the flange and its INNER diameter
+// presses on the lip's outer cone (Cone B, the inner wall of the flange groove:
+// r = 38.4099 + (z - 1.3974)*tan20, flange-local z; it narrows toward the tube).
+// The tube's end face sits at the z where Cone B's radius equals the tube's
+// inner radius: there the inner edge touches the cone, and the rest of the end
+// face (r up to converterRadius+wall) is clear of it, so the overlap is zero.
+// Valid while the inner radius lies on the straight part of Cone B
+// (37.0068 .. 38.4099 mm). For r < 37.5 the seat is below the groove mouth
+// (flange-local z = -1.1026), i.e. the tube end does not enter the groove.
+const G4double converterWall = 0.2*mm;  // tube is converterRadius .. converterRadius+0.2 (37.2..37.4)
+const G4double flangeSeatLocalZ = 1.3973798987*mm + (converterRadius*mm - 38.4099255857*mm) / std::tan(20.*deg);
+if (converterRadius < 37.0068 || converterRadius > 38.4099) {  // T3 tangency .. groove bottom
+  G4cout << "*** WARNING: converterRadius " << converterRadius
+         << " mm does not land on the flange's Cone B seat (37.0068..38.4099 mm);"
+         << " converter tube / flange placement is not physical" << G4endl;
+}
+const G4double converterNearEndZ = longzero - convcubesize;  // world z of the tube's near end (fixed)
+// part origin z such that  part origin z + flange offset z + seat z == tube near end z
+const G4double enclosurePartOriginZ = converterNearEndZ - flangeOffsetInPartFrame.z() - flangeSeatLocalZ;
+
+G4ThreeVector enclosurePartOrigin(-sideoffset - 2*cubesizehalf, -tiefe, enclosurePartOriginZ);
+fEnclosurePartOrigin = enclosurePartOrigin;  // NEW (Claude): read by ExUCNVisOnlyWorld
+// Height, above the part origin, at which the 56 mm port breaks the body's
+// outer surface at x=z=0 (YC=24 + outer radius 82, see make_gdml.py enclosure()).
+const G4double enclosurePortHeight = 106.0;
+
+const G4ThreeVector flangeOrigin = enclosurePartOrigin + flangeOffsetInPartFrame;
+const G4double converterSeatZ = flangeOrigin.z() + flangeSeatLocalZ;  // == converterNearEndZ by construction
+G4cout << "*** End unit: part origin " << enclosurePartOrigin
+       << " (z computed for converter seat; tube inner radius " << converterRadius
+       << " mm meets flange Cone B at flange-local z = " << flangeSeatLocalZ << ")" << G4endl;
+// --- END NEW ---
+// ============================================================================
+
 // the downward tube into the converter volume
  G4double reducedheight = converterRadius - 37.5;
+  G4double downwardTubeTop = -tiefe + 196./2. + convcubesize + reducedheight/2. + (196./2. - reducedheight/2.);
+  G4double downwardTubeBottom = enclosurePartOrigin.y() + enclosurePortHeight;
+  G4double downwardTubeHalfLength = (downwardTubeTop - downwardTubeBottom) / 2.0;
+  G4double downwardTubeCenterY = (downwardTubeTop + downwardTubeBottom) / 2.0;
   rMax = 7*cm;
 //rMin = 0.0*cm; // Use this for closed converter
 
   rMin = 2.5*cm; // Use this for vTOF / Extraction
-  G4Tubs *solidDownwardTube = new G4Tubs("SolidTubeD", rMin, rMax, 196./2. - reducedheight /2., 0., twopi);
+  G4Tubs *solidDownwardTube = new G4Tubs("SolidTubeD", rMin, rMax, downwardTubeHalfLength, 0., twopi);
   G4LogicalVolume *logicDownwardTube = new  G4LogicalVolume(solidDownwardTube,  GuideMaterial1, "SolidTubeD");
   G4RotationMatrix * zRot7 = new G4RotationMatrix();
  // zRot7->rotateZ(3.14159/4*rad);
@@ -491,19 +618,21 @@ G4double tiefe = 286.;
  logicDownwardTube->SetUserLimits(stepLimit);
 
 
-  G4VPhysicalVolume *physiDownwardTube = new G4PVPlacement(zRot7, G4ThreeVector(-sideoffset - 2*cubesizehalf,-tiefe+196./2.+convcubesize + reducedheight/2.,longzero), "DownwardTube", logicDownwardTube, physiWorld, false, 0);
+  G4VPhysicalVolume *physiDownwardTube = new G4PVPlacement(zRot7, G4ThreeVector(-sideoffset - 2*cubesizehalf,downwardTubeCenterY,longzero), "DownwardTube", logicDownwardTube, physiWorld, false, 0);
 
-G4cout << "*** tube downward into converter " << G4endl;
+G4cout << "*** tube downward into converter (now ending at the enclosure's 56 mm port) " << G4endl;
 G4cout << " inside radius " << rMin << G4endl;
-G4cout << " length " << 196./2. - reducedheight /2. << G4endl;
+G4cout << " outside radius " << rMax << G4endl;
+G4cout << " length " << downwardTubeHalfLength*2 << G4endl;
 G4cout << " x-position " << -sideoffset - 2*cubesizehalf << G4endl;
-G4cout << " y-position " << -tiefe+196./2.+convcubesize + reducedheight/2. << G4endl;
+G4cout << " y-position " << downwardTubeCenterY << G4endl;
 G4cout << " z-position " << longzero  << G4endl;
 
 
 
 
 
+/*
 // the disc valve sealing the converter
    rMax = 3.0*cm; // This should be 3cm
    rMin = 0*cm;
@@ -522,6 +651,7 @@ G4cout << " length " << valveh/2 << G4endl;
 G4cout << " x-position " << -sideoffset - 2*cubesizehalf << G4endl;
 G4cout << " Valve y-position " << -tiefe + 37.5 - valveh/2. + valveheight << G4endl;
 G4cout << " z-position " << longzero  << G4endl;
+*/
 
 // Rod actuating the valve
 G4double fixed_ceiling = 25.; // fixed top of rod
@@ -638,10 +768,16 @@ G4cout << " z-position " << longzero << G4endl;
 
 G4cout << "*** converter tube" << G4endl;
 G4cout << " inside radius " << converterRadius << G4endl;
+G4cout << " outside radius " << converterRadius + converterWall << G4endl;
 G4cout << " length " << converterLength*2 << G4endl;
 G4cout << " x-position " << -sideoffset - 2*cubesizehalf << G4endl;
 G4cout << " y-position " << -tiefe << G4endl;
-G4cout << " z-position " << longzero-1500.-convcubesize  << G4endl;
+G4cout << " z-position " << longzero-converterLength-convcubesize << G4endl;
+G4cout << " near end z = " << longzero-convcubesize
+       << "; flange Cone B seat for this radius currently at z = " << converterSeatZ
+       << " (flange-local z = " << flangeSeatLocalZ << ") -> end-unit parts need a z shift of "
+       << (longzero-convcubesize) - converterSeatZ << " mm to meet the tube" << G4endl;
+// --- END NEW ---
   
   // We size up the plugs by 12.5 + converterRadius to keep the volume sealed
   // converter volume PLUGs
@@ -655,7 +791,7 @@ G4cout << " radius " << 50 << G4endl;
 G4cout << " length " << 10 << G4endl;
 G4cout << " x-position " << -sideoffset - 2*cubesizehalf << G4endl;
 G4cout << " y-position " << -tiefe << G4endl;
-G4cout << " z-position " << longzero-3005.-convcubesize  << G4endl;
+G4cout << " z-position " << longzero-(converterLength*2+5.)-convcubesize << G4endl;
 
 
 //converter volume PLUGs
@@ -1018,6 +1154,217 @@ G4cout << " z-position " << sideoffset+ 2*cubesizehalf << G4endl;
 
 // test comment out foil and run vTOF
 
+
+// ============================================================================
+// --- NEW (Claude): converter end-unit enclosure + exit window (GDML), added
+// alongside the existing CubeConverter/Converterplug2 placeholders for visual
+// comparison. Not replacing them yet -- overlaps with those two volumes are
+// expected until they are retired. See GDML_ENCLOSURE_INTEGRATION.md for the
+// full writeup, placement derivation, and outstanding TODOs. ---
+G4GDMLParser gdmlParserEnclosure;
+gdmlParserEnclosure.Read("../ucn/enclosure_plus_window.gdml", false);
+
+G4LogicalVolume* logicEnclosure  = gdmlParserEnclosure.GetVolume("Enclosure");
+G4LogicalVolume* logicExitWindow = gdmlParserEnclosure.GetVolume("ExitWindow");
+
+logicEnclosure->SetMaterial(EnclosureMaterial);
+logicExitWindow->SetMaterial(WindowMaterial);
+logicEnclosure->SetUserLimits(smallstepLimit);
+logicExitWindow->SetUserLimits(smallstepLimit);
+
+// The real Enclosure solid has ~30-40 nested boolean operations (including a
+// 65-piece multiUnion for small bolt/tap holes). Timed in isolation,
+// GetSolid()->GetPolyhedron() on it did not finish within 120 s -- Geant4's
+// viewer needs exactly that polyhedron before it can draw anything, which is
+// why the interactive viewer goes black/unresponsive if this volume is left
+// visible. Mark it invisible so the default culling (on by default: see
+// G4ViewParameters' fCulling/fCullInvisible) skips drawing it entirely --
+// this does NOT affect navigation/tracking, only what the viewer attempts to
+// mesh. A fast simplified stand-in (EnclosureCavityVisOnly, below) is shown
+// instead so placement/orientation can still be checked visually.
+G4VisAttributes* enclosureVis = new G4VisAttributes(G4Colour(0.6, 0.6, 0.65));
+enclosureVis->SetVisibility(false);
+logicEnclosure->SetVisAttributes(enclosureVis);
+
+G4VisAttributes* windowVis = new G4VisAttributes(G4Colour(0.9, 0.6, 0.1, 0.4));
+windowVis->SetForceSolid(true);
+logicExitWindow->SetVisAttributes(windowVis);
+
+// Each GDML daughter carries an offset from the GDML world, read here rather
+// than hard-coded (GDML_INTEGRATION_TASK.md).
+// NOTE (Claude, 2026-11-17): the GDML world LV must NOT be named "World" --
+// GDML volumes are looked up by name, so it used to resolve to this sim's own
+// world and the offsets came out (0,0,0) (or, after /run/reinitializeGeometry,
+// as the previous build's placement, putting the enclosure at 2x the part
+// origin). make_gdml.py now names it "<file>_World"; a missing offset is fatal.
+G4VPhysicalVolume* gdmlEnclosureWorld = gdmlParserEnclosure.GetWorldVolume();
+G4ThreeVector enclosureOffset, windowOffset;
+G4bool foundEnclosure = false, foundWindow = false;
+G4LogicalVolume* gdmlWorldLV = gdmlEnclosureWorld->GetLogicalVolume();
+for (G4int i = 0; i < (G4int)gdmlWorldLV->GetNoDaughters(); ++i) {
+  G4VPhysicalVolume* daughter = gdmlWorldLV->GetDaughter(i);
+  if (daughter->GetLogicalVolume() == logicEnclosure)  { enclosureOffset = daughter->GetTranslation(); foundEnclosure = true; }
+  if (daughter->GetLogicalVolume() == logicExitWindow) { windowOffset   = daughter->GetTranslation(); foundWindow = true; }
+}
+if (!foundEnclosure || !foundWindow || gdmlWorldLV == logicWorld) {
+  G4Exception("ExUCNDetectorConstruction::Construct", "UCNGDML001", FatalException,
+              "enclosure_plus_window.gdml: Enclosure/ExitWindow not found as daughters of the GDML "
+              "world (world-name clash?) -- placement offsets unknown");
+}
+
+G4VPhysicalVolume* physiEnclosure = new G4PVPlacement(
+    0, enclosurePartOrigin + enclosureOffset, logicEnclosure,
+    "Enclosure", logicWorld, false, 0, true);
+
+G4VPhysicalVolume* physiExitWindow = new G4PVPlacement(
+    0, enclosurePartOrigin + windowOffset, logicExitWindow,
+    "ExitWindow", logicWorld, false, 0, true);
+
+G4cout << "*** Converter end-unit enclosure (GDML) ***" << G4endl;
+G4cout << "  part origin (world): " << enclosurePartOrigin << G4endl;
+G4cout << "  Enclosure placed at: " << enclosurePartOrigin + enclosureOffset << G4endl;
+G4cout << "  ExitWindow placed at: " << enclosurePartOrigin + windowOffset << G4endl;
+G4cout << "  Enclosure cubic volume: " << logicEnclosure->GetSolid()->GetCubicVolume()/mm3
+       << " mm^3 (SolidWorks reference ~410284 mm^3)" << G4endl;
+G4cout << "  ExitWindow cubic volume: " << logicExitWindow->GetSolid()->GetCubicVolume()/mm3
+       << " mm^3 (SolidWorks reference ~12813 mm^3)" << G4endl;
+// (CubeConvertre/Converterplug2 placeholders are commented out as of 2026-11-17.)
+
+// --- NEW (Claude, 2026-11-22): UCN valve, re-placed for the GDML enclosure ---
+// Same disc as the old (commented-out) valve: R30 mm, 5 mm thick, GuideMaterial1.
+// Now INSIDE the enclosure cavity, concentric with the top port (port axis =
+// part-frame x=z=0, along y), its top face pressed against the cavity's flat
+// roof. The roof is the top of the pocket in make_gdml.py: y = 90 (part frame),
+// flat for |x| <= 36 and z in [-39, 50]; the disc (|x|,|z| <= 30) lies inside
+// that flat patch and covers the R28.375 port with a 1.625 mm rim.
+// valveheight (/det/valveheight, mm) = offset of the valve's top face from the
+// roof: 0 = closed (pressed on the roof), negative = opened downward.
+// Positive values would push it into the roof and are clamped to 0.
+// The actuating rod is NOT placed: it would run up through the port into
+// DownwardTube, which is a solid (rMin=0) volume, i.e. an overlap.
+const G4double valveRadius     = 30.0*mm;
+const G4double valveThickness  = 5.0*mm;
+const G4double cavityRoofPartY = 90.0*mm;   // make_gdml.py: pocket pk_b, y 0..90
+G4double valveTopOffset = valveheight*mm;
+if (valveTopOffset > 0.) {
+  G4cout << "*** WARNING: /det/valveheight " << valveheight
+         << " mm would push the valve into the enclosure roof; using 0 (closed)" << G4endl;
+  valveTopOffset = 0.;
+}
+const G4ThreeVector valveCentrePart(0., cavityRoofPartY + valveTopOffset - valveThickness/2., 0.);
+G4Tubs* solidValve = new G4Tubs("SolidValve", 0., valveRadius, valveThickness/2., 0., twopi);
+G4LogicalVolume* logicValve = new G4LogicalVolume(solidValve, GuideMaterial1, "SolidValve");
+logicValve->SetUserLimits(stepLimit);
+G4RotationMatrix* valveRot = new G4RotationMatrix();
+valveRot->rotateX(90.*deg);                  // G4Tubs axis z -> world y (port axis)
+G4VPhysicalVolume* physiValve = new G4PVPlacement(
+    valveRot, enclosurePartOrigin + valveCentrePart, logicValve,
+    "Valve", logicWorld, false, 0, true);
+(void)physiValve;
+G4cout << "*** UCN valve: R " << valveRadius << " x " << valveThickness << " mm disc at "
+       << enclosurePartOrigin + valveCentrePart << " (part frame " << valveCentrePart
+       << "), top face " << valveTopOffset << " mm from the cavity roof"
+       << (valveTopOffset == 0. ? " (closed)" : " (open)") << G4endl;
+// Contact check on the real Enclosure solid (same Inside() tracking uses):
+// just above the valve's rim (between the port and the disc edge) must be
+// solid enclosure, just below the roof must be cavity.
+{
+  const G4VSolid* encl = logicEnclosure->GetSolid();
+  const G4double rRim = 0.5*(28.375*mm + valveRadius);   // middle of the 1.625 mm rim
+  const G4double d = 1e-3*mm;
+  auto st = [](EInside s) { return s == kInside ? "inside" : (s == kSurface ? "surface" : "outside"); };
+  for (G4double phi : {0., 90., 180., 270.}) {
+    const G4ThreeVector p(rRim*std::cos(phi*deg), cavityRoofPartY, rRim*std::sin(phi*deg));
+    G4cout << "    roof at rim phi=" << phi << ": 1 um above -> "
+           << st(encl->Inside(p + G4ThreeVector(0., d, 0.) - enclosureOffset))
+           << ", 1 um below -> " << st(encl->Inside(p - G4ThreeVector(0., d, 0.) - enclosureOffset))
+           << "   (expect inside / outside)" << G4endl;
+  }
+}
+// --- END NEW ---
+
+// --- NEW (Claude): fast vis-only stand-in for the Enclosure's inner cavity
+// (the surface UCN actually bounce off -- wall thickness/bolt holes don't
+// matter for that). Generated by make_enclosure_cavity_vis.py, which reuses
+// make_gdml.py's own cone/pocket-box/56mm-bore numbers (not retyped), minus
+// the 8 small R10 corner-blend pieces: bisection testing showed those are
+// what triggers Geant4's HepPolyhedronProcessor "too many edges"/"corrupted
+// input polyhedron" failure in the real Enclosure, not the overall op count.
+// This solid is, by construction, a strict subset of the real cavity (the
+// omitted pieces only ever add hollow space), so it cannot stick out into
+// real Enclosure wall material. (2026-11-17: its z/bore extents are now trimmed
+// to the real cavity, z=-58..49, port y<=106 -- the padded version overlapped
+// the Be window, the pressure flange and DownwardTube.) Material is fVacuum -- it IS genuinely empty
+// space in the real design, so crossing its boundary has no UCN physics
+// effect; it is not used for navigation/tracking decisions, purely vis.
+//
+// (Claude, 2026-11-17) OFF BY DEFAULT. It is a real placed volume, so neutrons
+// DO enter it, and UCNMaterialBoundary2 keys some logic on volume names (e.g.
+// "World"); a neutron inside it is in "EnclosureCavityVisOnly", not "World".
+// Only enable for a geometry-viewing session, never for physics runs.
+const G4bool placeEnclosureVisProxy = false;
+if (placeEnclosureVisProxy) {
+G4GDMLParser gdmlParserCavityVis;
+gdmlParserCavityVis.Read("../ucn/enclosure_cavity_visonly.gdml", false);
+G4LogicalVolume* logicCavityVis = gdmlParserCavityVis.GetVolume("EnclosureCavityVisOnly");
+logicCavityVis->SetMaterial(fVacuum);
+// NEW (Claude, 2026-11-17): was smallstepLimit (1 um max step) -- this volume
+// fills the whole enclosure cavity, where UCN spend most of their time, so it
+// must behave exactly like the surrounding world: same step limit as logicWorld.
+logicCavityVis->SetUserLimits(stepLimit);
+
+G4VisAttributes* cavityVisAtt = new G4VisAttributes(G4Colour(0.1, 0.8, 0.9));
+cavityVisAtt->SetForceWireframe(true);
+cavityVisAtt->SetVisibility(true);
+logicCavityVis->SetVisAttributes(cavityVisAtt);
+
+G4VPhysicalVolume* gdmlCavityVisWorld = gdmlParserCavityVis.GetWorldVolume();
+G4ThreeVector cavityVisOffset;
+G4bool foundCavityVis = false;
+G4LogicalVolume* gdmlCavityVisWorldLV = gdmlCavityVisWorld->GetLogicalVolume();
+for (G4int i = 0; i < (G4int)gdmlCavityVisWorldLV->GetNoDaughters(); ++i) {
+  G4VPhysicalVolume* daughter = gdmlCavityVisWorldLV->GetDaughter(i);
+  if (daughter->GetLogicalVolume() == logicCavityVis) { cavityVisOffset = daughter->GetTranslation(); foundCavityVis = true; }
+}
+if (!foundCavityVis || gdmlCavityVisWorldLV == logicWorld) {
+  G4Exception("ExUCNDetectorConstruction::Construct", "UCNGDML002", FatalException,
+              "enclosure_cavity_visonly.gdml: EnclosureCavityVisOnly not found as daughter of the "
+              "GDML world (world-name clash?) -- placement offset unknown");
+}
+
+G4VPhysicalVolume* physiCavityVis = new G4PVPlacement(
+    0, enclosurePartOrigin + cavityVisOffset, logicCavityVis,
+    "EnclosureCavityVisOnly", logicWorld, false, 0, true);
+G4cout << "*** Enclosure cavity vis-only stand-in placed at: "
+       << enclosurePartOrigin + cavityVisOffset
+       << " (VIS ONLY -- do not use this build for physics runs)" << G4endl;
+} else {
+  G4cout << "*** Enclosure cavity vis-only stand-in NOT placed (placeEnclosureVisProxy=false);"
+         << " the real Enclosure is hidden from vis; start with -visbody 1 to draw its body from"
+         << " the vis-only parallel world (ExUCNVisOnlyWorld; disables gravity)" << G4endl;
+}
+
+// --- NEW (Claude): quartz-converter pressure flange (GDML). Exact STEP
+// cross-section (one G4GenericPolycone) minus 16 countersunk bolt holes; see
+// build_flange_gdml.py. Placed coaxially behind the enclosure back boss.
+G4GDMLParser gdmlParserFlange;
+gdmlParserFlange.Read("../ucn/flange_polycone.gdml", false);
+G4LogicalVolume* logicFlange = gdmlParserFlange.GetVolume("Flange");
+logicFlange->SetMaterial(FlangeMaterial);
+logicFlange->SetUserLimits(smallstepLimit);
+G4VisAttributes* flangeVis = new G4VisAttributes(G4Colour(0.75, 0.75, 0.8, 0.6));
+flangeVis->SetForceSolid(true);
+logicFlange->SetVisAttributes(flangeVis);
+// The GDML world IS the flange volume (no daughter offset to read).
+G4VPhysicalVolume* physiFlange = new G4PVPlacement(
+    0, flangeOrigin, logicFlange, "PressureFlange", logicWorld, false, 0, true);
+G4cout << "*** Pressure flange (GDML) placed at: " << flangeOrigin
+       << ", cubic volume " << logicFlange->GetSolid()->GetCubicVolume()/mm3
+       << " mm^3 (STEP/OCC reference 9487.32 mm^3)" << G4endl;
+// --- END NEW ---
+
+// --- END NEW ---
+// ============================================================================
 
 // --- Etching foil from GDML ---
 // Parse the GDML file. The second argument (false) disables schema
