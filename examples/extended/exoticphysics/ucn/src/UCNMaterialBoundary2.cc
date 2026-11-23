@@ -16,6 +16,16 @@
 #include <fstream>
 #include "G4SystemOfUnits.hh"
 #include "G4AnalysisManager.hh"
+#include <fstream>
+#include "G4PhysicalVolumeStore.hh"
+#include "G4VPhysicalVolume.hh"
+#include "G4LogicalVolume.hh"
+#include "G4Tubs.hh"
+#include "G4RunManager.hh"
+#include "G4Run.hh"
+#include <cfloat>
+#include <cmath>
+#include <iomanip>
 
 G4bool isExcited = false;
 G4double chopper_t = 0;
@@ -44,6 +54,150 @@ G4double maxGlobalTime = 0.0;
 G4double downShiftLifetime = 10000000000000.;
 G4double betadecaylifetime = 10000000000000.;
 G4double heliumlifetime = 10000000000000.;
+
+// ===========================================================================
+// Helium / vacuum interface (superfluid He surface inside DownwardTube)
+// Full description: ../notes/helium_physics.md
+//
+// Per-track state. Reset at step 1 of every track. These are file-scope
+// globals like the rest of this file, so this is only valid with the
+// sequential G4RunManager (as used in ExUCN.cc).
+// ===========================================================================
+G4bool inHelium        = true;   // neutron is in the He (below the interface)
+G4bool heJustReflected = false;  // the interface just reflected the neutron;
+                                 // the next zero-length re-crossing is ignored
+G4int  heEventCount    = 0;      // interface events of this track (log only)
+
+namespace {
+  const G4double kU0_He_neV           = 18.5;  // He-4 Fermi potential [neV]
+  const G4bool   kHeQuantumReflection = true;  // partial (quantum) reflection
+  const G4bool   kHeLogCrossings      = true;  // write the per-particle log
+  const G4double kHeFaceTol           = 0.05;  // mm, tolerance on the face
+
+  // Interface geometry, read from the placed volume "DownwardTubeempty".
+  struct HeInterface {
+    G4bool   valid   = false;
+    G4double x       = 0.;  // axis x (global)
+    G4double z       = 0.;  // axis z (global)
+    G4double yBottom = 0.;  // global y of the bottom face = He level
+    G4double rIn     = 0.;
+    G4double rOut    = 0.;
+  };
+  HeInterface heIf;
+
+  std::ofstream heLog;
+  G4String      heLogName = "";
+
+  // Re-read the interface from the geometry (cheap map lookup). Called at
+  // step 1 of every track, so /det/converterRadius + /run/reinitializeGeometry
+  // between runs is picked up automatically.
+  void UpdateHeInterface()
+  {
+    HeInterface old = heIf;
+    heIf.valid = false;
+    G4VPhysicalVolume* pv = G4PhysicalVolumeStore::GetInstance()
+                              ->GetVolume("DownwardTubeempty", false, true);
+    if (pv == nullptr) return;
+    G4Tubs* tubs = dynamic_cast<G4Tubs*>(pv->GetLogicalVolume()->GetSolid());
+    if (tubs == nullptr) return;
+    // Tube axis must be (anti)parallel to global y. Note: the placement uses
+    // rotateX(3.14159/2), not pi/2, so the axis is tilted by ~1.3e-6 rad;
+    // over r = 25 mm that is ~3e-5 mm in y, well inside kHeFaceTol.
+    G4ThreeVector axis = pv->GetObjectRotationValue() * G4ThreeVector(0, 0, 1);
+    if (std::abs(std::abs(axis.y()) - 1.) > 1e-6) {
+      G4cout << "*** UCNMaterialBoundary2: DownwardTubeempty axis is not along y ("
+             << axis << "), helium interface disabled" << G4endl;
+      return;
+    }
+    G4ThreeVector c = pv->GetTranslation();  // mother is World -> global
+    heIf.valid   = true;
+    heIf.x       = c.x();
+    heIf.z       = c.z();
+    heIf.yBottom = c.y() - tubs->GetZHalfLength();
+    heIf.rIn     = tubs->GetInnerRadius();
+    heIf.rOut    = tubs->GetOuterRadius();
+
+    if (!old.valid || old.yBottom != heIf.yBottom || old.x != heIf.x ||
+        old.z != heIf.z || old.rIn != heIf.rIn || old.rOut != heIf.rOut) {
+      G4cout << "*** UCNMaterialBoundary2: helium interface at y = " << heIf.yBottom
+             << " mm, axis (x,z) = (" << heIf.x << ", " << heIf.z << "), r in ["
+             << heIf.rIn << ", " << heIf.rOut << "] mm" << G4endl;
+      if (heLog.is_open())
+        heLog << "# GEOM yBottom=" << heIf.yBottom << " x=" << heIf.x
+              << " z=" << heIf.z << " rIn=" << heIf.rIn << " rOut=" << heIf.rOut
+              << G4endl;
+    }
+  }
+
+  // One log file per output file: <outputfile1 without .txt>_helium.log
+  void EnsureHeLog(const G4String& outName)
+  {
+    if (!kHeLogCrossings) return;
+    G4String base = outName;
+    if (base.size() > 4 && base.substr(base.size() - 4) == ".txt")
+      base = base.substr(0, base.size() - 4);
+    G4String name = base + "_helium.log";
+    if (heLog.is_open() && name == heLogName) return;
+    if (heLog.is_open()) heLog.close();
+    heLog.open(name, std::ios::out);
+    heLogName = name;
+    heLog << std::setprecision(10);
+    heLog << "# Helium interface log (see notes/helium_physics.md)\n"
+          << "# U0_He=" << kU0_He_neV << " neV  quantumReflection="
+          << kHeQuantumReflection << "\n"
+          << "# cols: run event track step tGlobal[ns] tLocal[ns] stepLen[mm] "
+             "EVENT inHe_before inHe_after KE_pre[neV] KE_post[neV] "
+             "Eperp_pre[neV] Eperp_post[neV] Rq rnd "
+             "dirPreX dirPreY dirPreZ dirPostX dirPostY dirPostZ "
+             "posX posY posZ r heLossAt[s] meanHeLifetime[s] preVol postVol\n";
+    heLog << "# GEOM yBottom=" << heIf.yBottom << " x=" << heIf.x
+          << " z=" << heIf.z << " rIn=" << heIf.rIn << " rOut=" << heIf.rOut
+          << " valid=" << heIf.valid << G4endl;
+  }
+
+  void HeLogLine(const G4Track& trk, const G4Step& stp, const char* what,
+                 G4bool inBefore, G4bool inAfter,
+                 G4double kePre, G4double kePost,
+                 G4double ePerpPre, G4double ePerpPost,
+                 G4double Rq, G4double rnd,
+                 const G4ThreeVector& dPre, const G4ThreeVector& dPost,
+                 G4double lossAt, G4double meanLife)
+  {
+    if (!kHeLogCrossings || !heLog.is_open()) return;
+    const G4Run*   run = G4RunManager::GetRunManager()->GetCurrentRun();
+    const G4Event* evt = G4EventManager::GetEventManager()->GetConstCurrentEvent();
+    G4ThreeVector p = trk.GetPosition();
+    G4double dx = p.x() - heIf.x, dz = p.z() - heIf.z;
+    const G4VPhysicalVolume* v1 = stp.GetPreStepPoint()->GetPhysicalVolume();
+    const G4VPhysicalVolume* v2 = stp.GetPostStepPoint()->GetPhysicalVolume();
+    heLog << (run ? run->GetRunID() : -1) << " "
+          << (evt ? evt->GetEventID() : -1) << " "
+          << trk.GetTrackID() << " " << trk.GetCurrentStepNumber() << " "
+          << trk.GetGlobalTime() << " " << trk.GetLocalTime() << " "
+          << stp.GetStepLength() << " " << what << " "
+          << inBefore << " " << inAfter << " "
+          << kePre << " " << kePost << " " << ePerpPre << " " << ePerpPost << " "
+          << Rq << " " << rnd << " "
+          << dPre.x() << " " << dPre.y() << " " << dPre.z() << " "
+          << dPost.x() << " " << dPost.y() << " " << dPost.z() << " "
+          << p.x() << " " << p.y() << " " << p.z() << " "
+          << std::sqrt(dx * dx + dz * dz) << " "
+          << lossAt << " " << meanLife << " "
+          << (v1 ? v1->GetName() : G4String("none")) << " "
+          << (v2 ? v2->GetName() : G4String("none")) << G4endl;
+  }
+
+  // Quantum reflection probability at a potential step for the motion normal
+  // to the surface: R = ((k1-k2)/(k1+k2))^2, k ~ sqrt(E_perp).
+  // e1 = normal energy on the incident side, e2 = on the far side (> 0).
+  G4double StepReflectivity(G4double e1, G4double e2)
+  {
+    G4double k1 = std::sqrt(e1), k2 = std::sqrt(e2);
+    G4double a = (k1 - k2) / (k1 + k2);
+    return a * a;
+  }
+}
+// ===========================================================================
 G4String outputfile1 = "default1.txt";
 G4String outputfile2 = "default2.txt";
 G4String outputfile3 = "default3.txt";
@@ -420,9 +574,31 @@ downShiftLifetime = -std::log(1.0 - G4UniformRand()) * meanDownShiftLifetime;
 isExcited = true;
 }
 
-// energy independent loss time inside helium
+// energy independent loss time inside helium + helium interface state
+// (see notes/helium_physics.md). Primaries are generated in the converter,
+// i.e. below the He surface, so they start in helium.
 if (aTrack.GetCurrentStepNumber() == 1) {
-heliumlifetime = -std::log(1.0 - G4UniformRand()) * meanHeLifetime + aTrack.GetGlobalTime()*1e-9;
+  UpdateHeInterface();
+  EnsureHeLog(outputfile1);
+  heJustReflected = false;
+  heEventCount    = 0;
+  // Foil-side memory must not leak from the previous neutron: if that one ended
+  // at x > 250 (chopper/foil), this neutron's first step in the converter was
+  // taken as an inward foil passage and could be killed with code 1000.
+  // All neutrons start in the converter (x < 250). See notes/helium_physics.md §7.
+  foil = 0;
+  G4bool startAbove = heIf.valid && (aTrack.GetVertexPosition().y() > heIf.yBottom);
+  inHelium = !startAbove;
+  heliumlifetime = inHelium
+    ? -std::log(1.0 - G4UniformRand()) * meanHeLifetime + aTrack.GetGlobalTime()*1e-9
+    : DBL_MAX;
+  if (!heIf.valid)
+    G4cout << "*** UCNMaterialBoundary2: no helium interface found (DownwardTubeempty)" << G4endl;
+  G4double ke0 = aTrack.GetVertexKineticEnergy()/neV;
+  G4ThreeVector d0 = aTrack.GetVertexMomentumDirection();
+  HeLogLine(aTrack, aStep, startAbove ? "START_ABOVE_INTERFACE" : "START",
+            inHelium, inHelium, ke0, ke0, ke0*d0.y()*d0.y(), ke0*d0.y()*d0.y(),
+            0., -1., d0, d0, heliumlifetime, meanHeLifetime);
 }
 
 
@@ -439,7 +615,7 @@ heliumlifetime = -std::log(1.0 - G4UniformRand()) * meanHeLifetime + aTrack.GetG
 
 
 
-  // leaving and entering helium
+/*  // leaving and entering helium //As given, commenting out to try a new logic --HM 
 int usehe = 1;
 
 if (usehe == 1){
@@ -447,6 +623,7 @@ if (usehe == 1){
 
   if (volnam2 == "DownwardTubeempty" && volnam1 == "World"){
 //G4cout << " entering v2post = " << volnam2 << ", leave v1pre = " << volnam1 <<  ", p = " << pPostStepPoint->GetPosition() << G4endl; 
+  //G4cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!Logic Triggered for He!!!!!!!!!!!!!!!!!!!!!!!!!!" << G4endl;
   G4ThreeVector theGlobalPoint = pPostStepPoint->GetPosition();
   G4ThreeVector thePrePoint = pPreStepPoint->GetPosition();
    G4Navigator* theNavigator =
@@ -460,7 +637,7 @@ if (usehe == 1){
   theLocalNormal = -theNavigator->GetLocalExitNormal(&valid);
   //G4cout << " loc norm " << theLocalNormal << G4endl;
   if (theLocalNormal.getZ() == -1){
-     //G4cout << "leaving helium" << G4endl;	  
+     //G4cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!leaving helium!!!!!!!!!!!!!!!!!!!!!!!!!!" << G4endl;	  
      // reset helium lifetime to infinity
     meanHeLifetime = 100000000000000.;
     // add helium opt pot to vertical velocity component and set new energy
@@ -555,7 +732,414 @@ if (usehe == 1){
 
 
 } // use helium
+*/
 
+// New helium logic -- HM
+
+/*
+const G4double y_bottom    = -230.0;   // mm, disc bottom face global Y
+const G4double discCenterX = -349.5;   // mm, disc placement X
+const G4double discCenterZ = 0.0;      // mm, disc placement Z
+const G4double discOuterR  = 24.0;     // mm, matches solidDownwardTubeempty outer radius
+const G4double discInnerR  = 0.7;      // mm, matches solidDownwardTubeempty inner radius (rod bore)
+const G4double faceTol     = 0.05;     // mm, tolerance on the y-plane test
+
+static const G4bool logHeliumXing = true;
+static std::ofstream heliumLog;
+static G4bool heliumLogHeaderWritten = false;
+
+if (logHeliumXing && !heliumLogHeaderWritten){
+  heliumLog.open("helium_crossings.log", std::ios::out);
+  heliumLog << "# eventID trackID globalTime[ns] event preKE_total[neV] postKE_total[neV] "
+            << "preDirX preDirY preDirZ postDirX postDirY postDirZ posX posY posZ" << G4endl;
+  heliumLogHeaderWritten = true;
+}
+
+const G4Event* currentEvt = G4EventManager::GetEventManager()->GetConstCurrentEvent();
+G4int evtID = currentEvt ? currentEvt->GetEventID() : -1;
+
+const G4double U0_joules   = 2.9639e-27;   // 18.5 neV in joules
+const G4double U0_neV      = 18.5;
+const G4double neutronMass = 1.6749e-27;   // kg
+
+int usehe = 1;
+
+if (usehe == 1){
+
+  G4double posX = aTrack.GetPosition().x();
+  G4double posY = aTrack.GetPosition().y();
+  G4double posZ = aTrack.GetPosition().z();
+
+  G4double dx = posX - discCenterX;
+  G4double dz = posZ - discCenterZ;
+  G4double r  = std::sqrt(dx*dx + dz*dz);
+
+  G4bool atBottomFace = (std::abs(posY - y_bottom) < faceTol) &&
+                        (r > discInnerR) && (r < discOuterR);
+
+  // ---- World -> DownwardTubeempty, at the bottom face: BOOST ----------
+  if (volnam2 == "DownwardTubeempty" && volnam1 == "World" && atBottomFace){
+
+    meanHeLifetime = 100000000000000.;
+
+    G4ThreeVector dirPre = aTrack.GetMomentumDirection();
+    G4ThreeVector vert(0,1,0);   // tube axis is global Y, by this geometry's construction
+    G4double tfakt   = dirPre.dot(vert);
+    G4double vel     = aTrack.GetVelocity() * 1e6;
+    G4double velnorm = vel * tfakt;
+
+    G4double enormal     = 0.5 * velnorm*velnorm * neutronMass;
+    G4double enormal_new = enormal + U0_joules;
+
+    G4double sign = (velnorm < 0) ? -1.0 : 1.0;
+    G4double velnorm_new = sign * std::sqrt(2. * enormal_new / neutronMass);
+    G4double tfaktnew    = velnorm_new / velnorm;
+
+    G4double preKE = aTrack.GetKineticEnergy()/neV;
+    G4ThreeVector mom = aTrack.GetMomentum();
+    mom.setY(mom.getY() * tfaktnew);
+    mom = mom.unit();
+    G4double postKE = preKE + U0_neV;
+
+    aParticleChange.ProposeMomentumDirection(mom);
+    aParticleChange.ProposeEnergy(postKE*neV);
+
+    if (logHeliumXing){
+      heliumLog << evtID << " " << aTrack.GetTrackID() << " " << aTrack.GetGlobalTime()
+                << " BOOST " << preKE << " " << postKE << " "
+                << dirPre.x() << " " << dirPre.y() << " " << dirPre.z() << " "
+                << mom.x()    << " " << mom.y()    << " " << mom.z()    << " "
+                << posX << " " << posY << " " << posZ << G4endl;
+    }
+  }
+
+  // ---- DownwardTubeempty -> World, at the bottom face: DEBOOST --------
+  if (volnam1 == "DownwardTubeempty" && volnam2 == "World" && atBottomFace){
+
+    heliumlifetime = -std::log(1.0 - G4UniformRand()) * meanHeLifetime
+                     + aTrack.GetGlobalTime()*1e-9;
+
+    G4ThreeVector dirPre = aTrack.GetMomentumDirection();
+    G4ThreeVector vert(0,1,0);
+    G4double tfakt   = dirPre.dot(vert);
+    G4double vel     = aTrack.GetVelocity() * 1e6;
+    G4double velnorm = vel * tfakt;
+
+    G4double enormal     = 0.5 * velnorm*velnorm * neutronMass;
+    G4double enormal_new = enormal - U0_joules;
+
+    G4double preKE = aTrack.GetKineticEnergy()/neV;
+
+    if (enormal_new < 0){
+      G4ThreeVector mom = aTrack.GetMomentum();
+      mom.setY(-mom.getY());
+      mom = mom.unit();
+      aParticleChange.ProposeMomentumDirection(mom);
+
+      if (logHeliumXing){
+        heliumLog << evtID << " " << aTrack.GetTrackID() << " " << aTrack.GetGlobalTime()
+                  << " REFLECT " << preKE << " " << preKE << " "
+                  << dirPre.x() << " " << dirPre.y() << " " << dirPre.z() << " "
+                  << mom.x()    << " " << mom.y()    << " " << mom.z()    << " "
+                  << posX << " " << posY << " " << posZ << G4endl;
+      }
+    }
+    else{
+      G4double sign = (velnorm < 0) ? -1.0 : 1.0;
+      G4double velnorm_new = sign * std::sqrt(2. * enormal_new / neutronMass);
+      G4double tfaktnew    = velnorm_new / velnorm;
+
+      G4ThreeVector mom = aTrack.GetMomentum();
+      mom.setY(mom.getY() * tfaktnew);
+      mom = mom.unit();
+      G4double postKE = preKE - U0_neV;
+
+      aParticleChange.ProposeMomentumDirection(mom);
+      aParticleChange.ProposeEnergy(postKE*neV);
+
+      if (logHeliumXing){
+        heliumLog << evtID << " " << aTrack.GetTrackID() << " " << aTrack.GetGlobalTime()
+                  << " DEBOOST " << preKE << " " << postKE << " "
+                  << dirPre.x() << " " << dirPre.y() << " " << dirPre.z() << " "
+                  << mom.x()    << " " << mom.y()    << " " << mom.z()    << " "
+                  << posX << " " << posY << " " << posZ << G4endl;
+      }
+    }
+  }
+
+} // end use helium
+*/
+
+
+/* ---- Previous HM helium logic, superseded 2026-11-10 by the block below
+        (see notes/helium_physics.md; backup in notes/backups/) ----
+static std::ofstream heliumLog;
+static G4bool heliumLogInit = false;
+if (!heliumLogInit){
+  heliumLog.open("helium_crossings.log", std::ios::out);
+  heliumLog << "# eventID trackID globalTime[ns] event preKE_total[neV] postKE_total[neV] "
+            << "preDirX preDirY preDirZ postDirX postDirY postDirZ posX posY posZ" << G4endl;
+  heliumLogInit = true;
+}
+
+const G4Event* currentEvt = G4EventManager::GetEventManager()->GetConstCurrentEvent();
+G4int evtID = currentEvt ? currentEvt->GetEventID() : -1;
+
+const G4double U0_joules   = 2.9639e-27;   // 18.5 neV in joules
+const G4double U0_neV      = 18.5;
+const G4double neutronMass = 1.6749e-27;   // kg
+
+// Interface geometry -- printed directly from DetectorConstruction, not inferred.
+const G4double He_centerX = -350.0;
+const G4double He_centerZ = 0.0;
+const G4double He_bottomY = -230.0;
+const G4double He_outerR  = 25.0;
+const G4double He_innerR  = 0.7;   // excludes the rod
+const G4double He_tol     = 0.05;  // mm, tolerance on the y-plane test
+
+int usehe = 1;
+
+if (usehe == 1){
+
+  G4double posX = aTrack.GetPosition().x();
+  G4double posY = aTrack.GetPosition().y();
+  G4double posZ = aTrack.GetPosition().z();
+
+  G4double dx = posX - He_centerX;
+  G4double dz = posZ - He_centerZ;
+  G4double r  = std::sqrt(dx*dx + dz*dz);
+
+  G4bool atInterface = (std::abs(posY - He_bottomY) < He_tol) &&
+                       (r > He_innerR) && (r < He_outerR);
+
+  if (volnam2 == "DownwardTubeempty" && volnam1 == "World" && atInterface){
+
+    meanHeLifetime = 100000000000000.;
+
+    G4ThreeVector dirPre = aTrack.GetMomentumDirection();
+    G4double vel     = aTrack.GetVelocity() * 1e6;
+    G4double velnorm = vel * dirPre.y();
+
+    G4double enormal     = 0.5 * velnorm*velnorm * neutronMass;
+    G4double enormal_new = enormal + U0_joules;
+    G4double sign = (velnorm < 0) ? -1.0 : 1.0;
+    G4double velnorm_new = sign * std::sqrt(2. * enormal_new / neutronMass);
+    G4double tfaktnew = velnorm_new / velnorm;
+
+    G4double preKE = aTrack.GetKineticEnergy()/neV;
+    G4ThreeVector mom = aTrack.GetMomentum();
+    mom.setY(mom.getY() * tfaktnew);
+    mom = mom.unit();
+    G4double postKE = preKE + U0_neV;
+
+    aParticleChange.ProposeMomentumDirection(mom);
+    aParticleChange.ProposeEnergy(postKE*neV);
+    G4cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"<< G4endl;
+    heliumLog << evtID << " " << aTrack.GetTrackID() << " " << aTrack.GetGlobalTime()
+              << " BOOST " << preKE << " " << postKE << " "
+              << dirPre.x() << " " << dirPre.y() << " " << dirPre.z() << " "
+              << mom.x() << " " << mom.y() << " " << mom.z() << " "
+              << posX << " " << posY << " " << posZ << G4endl;
+  }
+
+  if (volnam1 == "DownwardTubeempty" && volnam2 == "World" && atInterface){
+
+    heliumlifetime = -std::log(1.0 - G4UniformRand()) * meanHeLifetime
+                     + aTrack.GetGlobalTime()*1e-9;
+
+    G4ThreeVector dirPre = aTrack.GetMomentumDirection();
+    G4double vel     = aTrack.GetVelocity() * 1e6;
+    G4double velnorm = vel * dirPre.y();
+
+    G4double enormal     = 0.5 * velnorm*velnorm * neutronMass;
+    G4double enormal_new = enormal - U0_joules;
+
+    G4double preKE = aTrack.GetKineticEnergy()/neV;
+
+    if (enormal_new < 0){
+      G4ThreeVector mom = aTrack.GetMomentum();
+      mom.setY(-mom.getY());
+      mom = mom.unit();
+      aParticleChange.ProposeMomentumDirection(mom);
+
+      heliumLog << evtID << " " << aTrack.GetTrackID() << " " << aTrack.GetGlobalTime()
+                << " REFLECT " << preKE << " " << preKE << " "
+                << dirPre.x() << " " << dirPre.y() << " " << dirPre.z() << " "
+                << mom.x() << " " << mom.y() << " " << mom.z() << " "
+                << posX << " " << posY << " " << posZ << G4endl;
+    }
+    else{
+      G4double sign = (velnorm < 0) ? -1.0 : 1.0;
+      G4double velnorm_new = sign * std::sqrt(2. * enormal_new / neutronMass);
+      G4double tfaktnew = velnorm_new / velnorm;
+
+      G4ThreeVector mom = aTrack.GetMomentum();
+      mom.setY(mom.getY() * tfaktnew);
+      mom = mom.unit();
+      G4double postKE = preKE - U0_neV;
+
+      aParticleChange.ProposeMomentumDirection(mom);
+      aParticleChange.ProposeEnergy(postKE*neV);
+
+      heliumLog << evtID << " " << aTrack.GetTrackID() << " " << aTrack.GetGlobalTime()
+                << " DEBOOST " << preKE << " " << postKE << " "
+                << dirPre.x() << " " << dirPre.y() << " " << dirPre.z() << " "
+                << mom.x() << " " << mom.y() << " " << mom.z() << " "
+                << posX << " " << posY << " " << posZ << G4endl;
+    }
+  }
+
+} // end use helium
+*/
+
+// ---------------------------------------------------------------------------
+// Helium / vacuum interface (HM + Claude, 2026-11-10). See notes/helium_physics.md
+//
+// The He surface is the bottom face of "DownwardTubeempty" (y = heIf.yBottom).
+// Below it (World inside the converter) is superfluid He with U0 = 18.5 neV;
+// the ring volume and everything above it is vacuum.
+//
+//  He  -> vac (World -> DownwardTubeempty, moving up):
+//       if He loss time already passed: kill (HELOSS_INTERFACE)
+//       else with prob. Rq: QREFLECT_UP (stays in He, y-direction flipped)
+//       else BOOST: E_perp += U0, KE += U0, He loss switched off
+//  vac -> He (DownwardTubeempty -> World, moving down):
+//       E_perp < U0           : REFLECT       (stays in vacuum)
+//       else with prob. Rq    : QREFLECT_DOWN (stays in vacuum)
+//       else DEBOOST: E_perp -= U0, KE -= U0, new He loss time sampled
+//  Any interface crossing that does not match the inHelium state is NOT
+//  acted on: RECROSS if it is the zero-length step right after a reflection
+//  (expected), ANOMALY otherwise (should never appear).
+// ---------------------------------------------------------------------------
+if (heIf.valid){
+
+  G4ThreeVector hePos = aTrack.GetPosition();
+  G4double heDx = hePos.x() - heIf.x;
+  G4double heDz = hePos.z() - heIf.z;
+  G4double heR  = std::sqrt(heDx*heDx + heDz*heDz);
+
+  G4bool atInterface = (std::abs(hePos.y() - heIf.yBottom) < kHeFaceTol) &&
+                       (heR > heIf.rIn) && (heR < heIf.rOut);
+
+  G4bool goingUp   = (volnam1 == "World" && volnam2 == "DownwardTubeempty");
+  G4bool goingDown = (volnam1 == "DownwardTubeempty" && volnam2 == "World");
+
+  if (atInterface && (goingUp || goingDown)){
+
+    heEventCount++;
+    const G4bool        inBefore = inHelium;
+    const G4ThreeVector dPre     = aTrack.GetMomentumDirection();
+    const G4double      kePre    = aTrack.GetKineticEnergy()/neV;
+    const G4double      ePerp    = kePre * dPre.y() * dPre.y();  // normal = global y
+    const G4double      lossBefore = heliumlifetime;
+
+    // the crossing is only physical if it matches the state and the direction
+    G4bool physicalUp   = goingUp   &&  inHelium && dPre.y() > 0.;
+    G4bool physicalDown = goingDown && !inHelium && dPre.y() < 0.;
+
+    if (!physicalUp && !physicalDown){
+      // Zero-length step back across the face right after a reflection,
+      // or something unexpected. Do nothing to the neutron.
+      HeLogLine(aTrack, aStep, heJustReflected ? "RECROSS" : "ANOMALY",
+                inBefore, inHelium, kePre, kePre, ePerp, ePerp, 0., -1.,
+                dPre, dPre, heliumlifetime, meanHeLifetime);
+      heJustReflected = false;
+    }
+
+    // ---------------- He -> vacuum ----------------
+    else if (physicalUp){
+      heJustReflected = false;
+
+      if (aTrack.GetGlobalTime()*1e-9 > heliumlifetime){
+        // the He loss time ran out while in He; the boundary-only loss check
+        // below has not seen it yet. Do not let the neutron escape.
+        HeLogLine(aTrack, aStep, "HELOSS_INTERFACE", inBefore, inHelium,
+                  kePre, kePre, ePerp, ePerp, 0., -1., dPre, dPre,
+                  heliumlifetime, meanHeLifetime);
+        G4cout << "Lost in helium " << chopper_t << ", " << aTrack.GetGlobalTime() << ", " << aTrack.GetKineticEnergy()/neV << ", " << aTrack.GetMomentumDirection() << ", " << pPreStepPoint->GetPosition() << G4endl;
+        std::ofstream myfile(outputfile1, std::ofstream::app);
+        myfile << aTrack.GetKineticEnergy()/neV << " " << aTrack.GetMomentumDirection().getX() << " " <<  aTrack.GetMomentumDirection().getY() << " " <<  aTrack.GetMomentumDirection().getZ() << " " << pPreStepPoint->GetPosition().getX() << " " << pPreStepPoint->GetPosition().getY() << " " << pPreStepPoint->GetPosition().getZ() << " " << aTrack.GetGlobalTime() <<" " <<  chopper_t + chopper_smear << " " << chopper_t << " " << chopper_x << " " << foilct << " " << chopper_z << " " << chopper_px << " " << chopper_py << " " << "12000" << std::endl;
+        aParticleChange.ProposeTrackStatus(fStopAndKill);
+        return G4VDiscreteProcess::PostStepDoIt(aTrack, aStep);
+      }
+
+      const G4double ePerpNew = ePerp + kU0_He_neV;
+      G4double Rq  = kHeQuantumReflection ? StepReflectivity(ePerp, ePerpNew) : 0.;
+      G4double rnd = kHeQuantumReflection ? G4UniformRand() : -1.;
+
+      if (rnd >= 0. && rnd < Rq){
+        G4ThreeVector dNew(dPre.x(), -dPre.y(), dPre.z());
+        aParticleChange.ProposeMomentumDirection(dNew);
+        heJustReflected = true;               // stays in He
+        HeLogLine(aTrack, aStep, "QREFLECT_UP", inBefore, inHelium,
+                  kePre, kePre, ePerp, ePerp, Rq, rnd, dPre, dNew,
+                  heliumlifetime, meanHeLifetime);
+      }
+      else{
+        // tangential momentum conserved, normal energy + U0
+        const G4double keNew = kePre + kU0_He_neV;
+        G4ThreeVector dNew(dPre.x()*std::sqrt(kePre),
+                           std::sqrt(ePerpNew),
+                           dPre.z()*std::sqrt(kePre));
+        dNew /= std::sqrt(keNew);
+        aParticleChange.ProposeMomentumDirection(dNew.unit());
+        aParticleChange.ProposeEnergy(keNew*neV);
+        inHelium       = false;
+        heliumlifetime = DBL_MAX;             // no He loss in vacuum
+        HeLogLine(aTrack, aStep, "BOOST", inBefore, inHelium,
+                  kePre, keNew, ePerp, ePerpNew, Rq, rnd, dPre, dNew,
+                  lossBefore, meanHeLifetime);
+      }
+    }
+
+    // ---------------- vacuum -> He ----------------
+    else { // physicalDown
+      heJustReflected = false;
+      const G4double ePerpNew = ePerp - kU0_He_neV;
+
+      if (ePerpNew <= 0.){
+        G4ThreeVector dNew(dPre.x(), -dPre.y(), dPre.z());
+        aParticleChange.ProposeMomentumDirection(dNew);
+        heJustReflected = true;               // stays in vacuum
+        HeLogLine(aTrack, aStep, "REFLECT", inBefore, inHelium,
+                  kePre, kePre, ePerp, ePerp, 1., -1., dPre, dNew,
+                  heliumlifetime, meanHeLifetime);
+      }
+      else{
+        G4double Rq  = kHeQuantumReflection ? StepReflectivity(ePerp, ePerpNew) : 0.;
+        G4double rnd = kHeQuantumReflection ? G4UniformRand() : -1.;
+
+        if (rnd >= 0. && rnd < Rq){
+          G4ThreeVector dNew(dPre.x(), -dPre.y(), dPre.z());
+          aParticleChange.ProposeMomentumDirection(dNew);
+          heJustReflected = true;             // stays in vacuum
+          HeLogLine(aTrack, aStep, "QREFLECT_DOWN", inBefore, inHelium,
+                    kePre, kePre, ePerp, ePerp, Rq, rnd, dPre, dNew,
+                    heliumlifetime, meanHeLifetime);
+        }
+        else{
+          const G4double keNew = kePre - kU0_He_neV;
+          G4ThreeVector dNew(dPre.x()*std::sqrt(kePre),
+                             -std::sqrt(ePerpNew),
+                             dPre.z()*std::sqrt(kePre));
+          dNew /= std::sqrt(keNew);
+          aParticleChange.ProposeMomentumDirection(dNew.unit());
+          aParticleChange.ProposeEnergy(keNew*neV);
+          inHelium = true;
+          // exponential loss is memoryless: a fresh sample from now is exact
+          heliumlifetime = -std::log(1.0 - G4UniformRand()) * meanHeLifetime
+                           + aTrack.GetGlobalTime()*1e-9;
+          HeLogLine(aTrack, aStep, "DEBOOST", inBefore, inHelium,
+                    kePre, keNew, ePerp, ePerpNew, Rq, rnd, dPre, dNew,
+                    heliumlifetime, meanHeLifetime);
+        }
+      }
+    }
+  }
+}
+// End helium interface
+
+// End new helium logic -- HM
 
 /// foil
 int usefoil = 0;
@@ -774,7 +1358,11 @@ if ( (aTrack.GetGlobalTime()*1e-9 > downShiftLifetime) && (isExcited == true) &&
 
 
 
-if ( aTrack.GetLocalTime()*1e-9 > heliumlifetime){
+// heliumlifetime is an absolute (global) time in s and is DBL_MAX outside He
+if ( inHelium && aTrack.GetGlobalTime()*1e-9 > heliumlifetime){
+        { G4double ke = aTrack.GetKineticEnergy()/neV; G4ThreeVector d = aTrack.GetMomentumDirection();
+          HeLogLine(aTrack, aStep, "HELOSS", inHelium, inHelium, ke, ke, ke*d.y()*d.y(), ke*d.y()*d.y(),
+                    0., -1., d, d, heliumlifetime, meanHeLifetime); }
         //G4cout << "helium loss " << G4endl;
 
 std::ofstream myfile(outputfile1, std::ofstream::app);
@@ -1019,22 +1607,37 @@ if (Material1 == Material2)  return G4VDiscreteProcess::PostStepDoIt(aTrack, aSt
 
 
 
-  G4double fermipot_diff = fermipot - fermipot_previous;
-  
+  // --- Helium (notes/helium_physics.md §6, §11) ----------------------------
+  // The macro gives FULL optical potentials. While inHelium the neutron's KE
+  // is measured inside the He, i.e. relative to U0 = kU0_He_neV. The He region
+  // is vacuum material (no properties table) in the geometry, so while
+  // inHelium a vacuum-side volume counts as U0: every wall step becomes
+  // V - U0. Outside the He this is identical to the old code.
+  // fermipot / fermipot_previous stay ABSOLUTE (used for absorption W and the
+  // chopper test below).
+  const G4bool   heFromVac = inHelium && (aMaterialPropertiesTabl2 == nullptr);
+  const G4double heVacPot  = inHelium ? kU0_He_neV : 0.;
+  const G4double Vnew_eff  = aMaterialPropertiesTabl  ? fermipot          : heVacPot;
+  const G4double Vprev_eff = aMaterialPropertiesTabl2 ? fermipot_previous : heVacPot;
+  G4double fermipot_diff = Vnew_eff - Vprev_eff;
+
   if (fermipotdiff_shutter < 1e300){
-      if (verboselevel > 2){ 
+      if (verboselevel > 2){
 	G4cout << "override by shutter " << fermipotdiff_shutter << G4endl;
       }
-      fermipot_diff = fermipot - fermipot_previous + fermipotdiff_shutter;
+      fermipot_diff += fermipotdiff_shutter;
       fermipotdiff_shutter = 1e300;
   }
- 
+
   // calculate loss and reflectivity june 27 2025
   // golub eq 2.71
+  // Real part: the potential step seen by the neutron (V - U0 when coming from
+  // the He). Imaginary part W: absorption of the wall itself, absolute V.
+   const G4double fermipot_re = heFromVac ? fermipot - kU0_He_neV : fermipot;
    G4double W = pupscatter * fermipot;
-   G4double alphaW = sqrt((fermipot-enormal)*(fermipot-enormal)+W*W);
-   G4double part1 = enormal - sqrt(enormal)*sqrt(2*alphaW - 2*(fermipot-enormal)) + alphaW;
-   G4double part2 = enormal + sqrt(enormal)*sqrt(2*alphaW - 2*(fermipot-enormal)) + alphaW;
+   G4double alphaW = sqrt((fermipot_re-enormal)*(fermipot_re-enormal)+W*W);
+   G4double part1 = enormal - sqrt(enormal)*sqrt(2*alphaW - 2*(fermipot_re-enormal)) + alphaW;
+   G4double part2 = enormal + sqrt(enormal)*sqrt(2*alphaW - 2*(fermipot_re-enormal)) + alphaW;
    G4double R_sq = (part1)/(part2);
    G4double reflection = R_sq;
    // until here
@@ -1131,9 +1734,22 @@ std::ofstream myfile(outputfile1, std::ofstream::app);
           G4double m = -sqrt(momnorm*momnorm - CLHEP::neutron_mass_c2*2.*fermipot_diff*neV);
           G4ThreeVector ref = mom - (momnorm-m)*theGlobalNormal;
           aParticleChange.ProposeMomentumDirection(ref.unit());
-          aParticleChange.ProposeEnergy(enew*neV); 
-	  
-         }    
+          aParticleChange.ProposeEnergy(enew*neV);
+
+          // Transmitted from the He into a wall: the neutron has left the
+          // helium. From here on all potentials are absolute; He loss off.
+          if (heFromVac) {
+            const G4ThreeVector dPost = ref.unit();
+            HeLogLine(aTrack, aStep, "WALL_ESCAPE", true, false,
+                      energy, enew,
+                      energy*momdir.y()*momdir.y(), enew*dPost.y()*dPost.y(),
+                      reflection, rnd2, momdir, dPost,
+                      DBL_MAX, meanHeLifetime);
+            inHelium       = false;
+            heliumlifetime = DBL_MAX;
+          }
+
+         }
        }
        else if (just_reflected == 1){
         just_reflected = 0 ;

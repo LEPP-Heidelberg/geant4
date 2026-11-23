@@ -33,16 +33,16 @@
 /mat/optpot1 183
 /mat/eta1 0.0001
 /mat/diff1 0.04
-# converter volume (INSIDE LIQUID HELIUM, therfore 18.5 neV reduced potential
-/mat/optpot2 96.5
+# converter volume. FULL potential: the 18.5 neV He shift is applied in the code while the neutron is in He
+/mat/optpot2 115
 /mat/eta2 0.00005
 /mat/diff2 0.02
-# cube inside the converter. reduce by 18.5 because submerged in lHe
-/mat/optpot3 233.5
+# cube inside the converter. FULL potential (He shift applied in the code)
+/mat/optpot3 252
 /mat/eta3 0.00005
 /mat/diff3 1.0
-#end plugs of converter, reduce by 18.5neV becuase submerged in lHe
-/mat/optpot4 233.5
+# end plugs of converter. FULL potential (He shift applied in the code)
+/mat/optpot4 252
 /mat/eta4 0.00005
 /mat/diff4 1.0
 # Chopper plates

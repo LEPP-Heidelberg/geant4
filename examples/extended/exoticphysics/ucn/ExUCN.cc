@@ -77,7 +77,7 @@ int main(int argc, char** argv)
   G4String session;
   G4int nThreads = 0;
 
-  G4long myseed = 15733297276;//time(NULL); //1234*G4UniformRand();
+  G4long myseed = time(NULL); // 15733297276;//time(NULL); //1234*G4UniformRand();
   for (G4int i = 1; i < argc; i = i + 2) {
     if (G4String(argv[i]) == "-m")
       macro = argv[i + 1];
@@ -103,7 +103,7 @@ int main(int argc, char** argv)
 
   // Choose the Random engine
   //
-  G4Random::setTheEngine(new CLHEP::RanecuEngine);
+  //G4Random::setTheEngine(new CLHEP::RanecuEngine);
 
   // Construct the default run manager
   //

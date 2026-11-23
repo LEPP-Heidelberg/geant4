@@ -119,17 +119,20 @@ void ExUCNPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
    
    G4ThreeVector gunPositionShift(x1 - 270 - 80 , z1- 286., -L + longi);
    G4double offset = 0;
-   G4double particleEnergy = (Espec(Especfile)+offset) * 1e-9*eV;
+   //G4double particleEnergy = (Espec(Especfile)+offset) * 1e-9*eV;
 
-   //G4double particleEnergy = gunEnergy_neV * 1e-9 * eV;
+   G4double particleEnergy = gunEnergy_neV * 1e-9 * eV;
+   //G4double particleEnergy = (gunEnergy_neV - (0.1025 * (z1 + R))) * 1e-9 * eV;
+
    //gunPositionShift.setY(-286.);
   // monoenergetic spectrum
 //particleEnergy = 60*1e-15;
-
+  
 
    fParticleGun->SetParticlePosition(gunPositionShift);
    fParticleGun->SetParticleEnergy(particleEnergy);
-   G4cout << "Energy = " << particleEnergy * 1e15 << " neV" << G4endl;
+   G4cout << "Kinetic Energy = " << particleEnergy * 1e15 << " neV" << G4endl;
+   G4cout << "Total Energy = " << particleEnergy * 1e15 + 0.1025*(z1+R) << " neV" << G4endl;
    //G4cout << " energy " << gunEnergy_neV << G4endl;
 
 std::ofstream myfile("start.txt", std::ofstream::app);

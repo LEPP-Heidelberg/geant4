@@ -505,7 +505,7 @@ G4cout << " z-position " << longzero  << G4endl;
 
 
 // the disc valve sealing the converter
-   rMax = 3.0*cm;
+   rMax = 3.0*cm; // This should be 3cm
    rMin = 0*cm;
    G4double valveh = 0.5*cm;
   G4Tubs *solidValve = new G4Tubs("SolidValve", rMin, rMax, valveh/2, 0., twopi);
@@ -544,28 +544,39 @@ G4cout << " rod height " << rodh << G4endl;
 G4cout << " rod y-centre " << y_rod_centre << G4endl;
 
 
-/*
+///*
 /////
  G4UserLimits* stepLimit2 = new G4UserLimits(0.1, DBL_MAX, maxTime);
 
 //the (empty) volume that defines the helium volume entry
-  G4double hetiefe = 280;
-  G4Tubs *solidDownwardTubeempty = new G4Tubs("SolidTubeDempty", 0., 24.0, 20 /2., 0., twopi);
-  G4LogicalVolume *logicDownwardTubeempty = new  G4LogicalVolume(solidDownwardTubeempty,  GuideMaterial1, "SolidTubeDempty");
- // G4LogicalVolume *logicDownwardTubeempty = new  G4LogicalVolume(solidDownwardTubeempty,  fVacuum, "SolidTubeDempty");
-
-  //  G4RotationMatrix * zRot7 = new G4RotationMatrix();
- // zRot7->rotateZ(3.14159/4*rad);
-//  zRot7->rotateX(3.14159/2*rad);
+  G4double hetiefe = 280;                                      //0.0 below
+  G4Tubs *solidDownwardTubeempty = new G4Tubs("SolidTubeDempty", 0.7, 25.0, 20/2., 0., twopi);
+  //G4LogicalVolume *logicDownwardTubeempty = new  G4LogicalVolume(solidDownwardTubeempty,  GuideMaterial1, "SolidTubeDempty");
+ 
+ 
+   G4LogicalVolume *logicDownwardTubeempty = new  G4LogicalVolume(solidDownwardTubeempty,  fVacuum, "SolidTubeDempty");
+    //G4RotationMatrix * zRot7 = new G4RotationMatrix();
+  //zRot7->rotateZ(3.14159/4*rad);
+  //zRot7->rotateX(3.14159/2*rad);
  logicDownwardTubeempty->SetUserLimits(stepLimit2);
 
- G4VPhysicalVolume *physiDownwardTubeempty = new G4PVPlacement(zRot7, G4ThreeVector(-sideoffset - 2*cubesizehalf,-hetiefe+20./2.+convcubesize + reducedheight/2.,longzero), "DownwardTubeempty", logicDownwardTubeempty, physiWorld, false, 0);
+ G4VPhysicalVolume *physiDownwardTubeempty = new G4PVPlacement(zRot7, G4ThreeVector(-sideoffset - 2*cubesizehalf,-hetiefe+20./2.+convcubesize + reducedheight,longzero), "DownwardTubeempty", logicDownwardTubeempty, physiWorld, false, 0); // reduced height was changed from reducedheight/2 --> reducedheight
 
-*/
+///
+//*/
 
 
+//G4VPhysicalVolume *physiDownwardTubeempty = new G4PVPlacement(zRot7, G4ThreeVector(-sideoffset - 2*cubesizehalf,-hetiefe+20./2.+convcubesize + reducedheight,longzero), "DownwardTubeempty", logicDownwardTubeempty, physiWorld, false, 0);
 
-
+G4double heCenterY = -hetiefe+20./2.+convcubesize + reducedheight;
+G4double heHalfZ   = 20./2.;
+G4cout << "*** HELIUM INTERFACE COORDINATES ***" << G4endl;
+G4cout << "  disc center X = " << -sideoffset - 2*cubesizehalf << G4endl;
+G4cout << "  disc center Y = " << heCenterY << G4endl;
+G4cout << "  disc center Z = " << longzero << G4endl;
+G4cout << "  disc bottom Y = " << heCenterY - heHalfZ << G4endl;
+G4cout << "  disc outer R  = 25.0" << G4endl;
+G4cout << "  disc inner R  = 0.7" << G4endl;
 
 
 
